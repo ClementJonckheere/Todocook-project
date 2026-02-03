@@ -36,6 +36,9 @@ next-env.d.ts
 # local env
 .env.local
 
-# Capacitor native platforms
-/android/
-/ios/
+# Expo mobile app
+mobile/node_modules/
+mobile/.expo/
+mobile/android/
+mobile/ios/
+mobile/dist/
