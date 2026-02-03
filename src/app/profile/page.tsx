@@ -6,6 +6,7 @@ import {
   User, TrendingUp, Plus, Save, ChevronDown, ChevronUp,
   Flame, Beef, Wheat, Droplet,
 } from "lucide-react";
+import { apiUrl } from "@/lib/api";
 
 interface UserData {
   id: number;
@@ -42,8 +43,8 @@ export default function ProfilePage() {
 
   useEffect(() => {
     Promise.all([
-      fetch("/api/users").then((r) => r.json()),
-      fetch("/api/daily-logs?days=30").then((r) => r.json()),
+      fetch(apiUrl("/api/users")).then((r) => r.json()),
+      fetch(apiUrl("/api/daily-logs?days=30")).then((r) => r.json()),
     ]).then(([userData, logsData]) => {
       setUser(userData);
       setForm(userData);
@@ -52,7 +53,7 @@ export default function ProfilePage() {
   }, []);
 
   const saveProfile = async () => {
-    const res = await fetch("/api/users", {
+    const res = await fetch(apiUrl("/api/users"), {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(form),

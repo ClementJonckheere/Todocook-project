@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, RefreshCw, AlertTriangle, ChefHat, Clock, Users, Flame } from "lucide-react";
+import { apiUrl } from "@/lib/api";
 
 interface SuggestedRecipe {
   id: number;
@@ -43,7 +44,7 @@ function SuggestionsContent() {
   const loadRecipes = async (currentOffset: number, currentFilter: number) => {
     setLoading(true);
     const res = await fetch(
-      `/api/suggestions?userId=1&maxMissing=${currentFilter}&offset=${currentOffset}`
+      apiUrl(`/api/suggestions?userId=1&maxMissing=${currentFilter}&offset=${currentOffset}`)
     );
     const data = await res.json();
     setRecipes(data.recipes);

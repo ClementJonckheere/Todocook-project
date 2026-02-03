@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Search, Plus, ChevronLeft, ChevronRight, X, Flame } from "lucide-react";
 import { format, addDays, startOfWeek } from "date-fns";
 import { fr } from "date-fns/locale";
+import { apiUrl } from "@/lib/api";
 
 interface User {
   id: number;
@@ -50,8 +51,8 @@ export default function DashboardPage() {
 
   const loadTodayData = useCallback(async () => {
     const [userRes, mealsRes] = await Promise.all([
-      fetch("/api/users"),
-      fetch(`/api/meal-plans?userId=1&startDate=${today}&endDate=${today}`),
+      fetch(apiUrl("/api/users")),
+      fetch(apiUrl(`/api/meal-plans?userId=1&startDate=${today}&endDate=${today}`)),
     ]);
     const userData = await userRes.json();
     const mealsData = await mealsRes.json();
@@ -69,7 +70,7 @@ export default function DashboardPage() {
   useEffect(() => {
     if (searchQuery.length >= 2) {
       const timer = setTimeout(async () => {
-        const res = await fetch(`/api/recipes?search=${encodeURIComponent(searchQuery)}`);
+        const res = await fetch(apiUrl(`/api/recipes?search=${encodeURIComponent(searchQuery)}`));
         const data = await res.json();
         setSearchResults(data);
       }, 300);
@@ -80,7 +81,7 @@ export default function DashboardPage() {
   }, [searchQuery]);
 
   const addRecipeToDay = async (recipeId: number, date: string, mealType: string) => {
-    await fetch("/api/meal-plans", {
+    await fetch(apiUrl("/api/meal-plans"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -98,7 +99,7 @@ export default function DashboardPage() {
   };
 
   const removeMeal = async (id: number) => {
-    await fetch(`/api/meal-plans?id=${id}`, { method: "DELETE" });
+    await fetch(apiUrl(`/api/meal-plans?id=${id}`), { method: "DELETE" });
     loadTodayData();
   };
 
@@ -364,7 +365,7 @@ function WeekOverview() {
   useEffect(() => {
     const start = format(monday, "yyyy-MM-dd");
     const end = format(addDays(monday, 6), "yyyy-MM-dd");
-    fetch(`/api/meal-plans?userId=1&startDate=${start}&endDate=${end}`)
+    fetch(apiUrl(`/api/meal-plans?userId=1&startDate=${start}&endDate=${end}`))
       .then((r) => r.json())
       .then(setWeekMeals);
   }, []);

@@ -35,3 +35,7 @@ next-env.d.ts
 
 # local env
 .env.local
+
+# Capacitor native platforms
+/android/
+/ios/

@@ -5,12 +5,49 @@
 :root {
   --foreground: #171717;
   --background: #f5f5f5;
+  --safe-area-inset-top: env(safe-area-inset-top, 0px);
+  --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-inset-left: env(safe-area-inset-left, 0px);
+  --safe-area-inset-right: env(safe-area-inset-right, 0px);
 }
 
 body {
   color: var(--foreground);
   background: var(--background);
   font-family: system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  overscroll-behavior-y: contain;
+  overflow-x: hidden;
+}
+
+/* Prevent text selection on interactive elements */
+button,
+a,
+nav {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Prevent input zoom on iOS (16px minimum font-size) */
+input,
+select,
+textarea {
+  font-size: 16px;
+}
+
+/* Standalone PWA mode adjustments */
+@media all and (display-mode: standalone) {
+  body {
+    padding-top: var(--safe-area-inset-top);
+  }
 }
 
 @layer utilities {
@@ -20,5 +57,32 @@ body {
   }
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
+  }
+
+  /* Safe area utilities */
+  .pb-safe {
+    padding-bottom: max(5rem, calc(4rem + var(--safe-area-inset-bottom)));
+  }
+
+  .safe-area-inset {
+    padding-left: var(--safe-area-inset-left);
+    padding-right: var(--safe-area-inset-right);
+  }
+
+  .pt-safe {
+    padding-top: var(--safe-area-inset-top);
+  }
+
+  /* Touch-friendly tap targets */
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Active state for touch */
+  .touch-active:active {
+    opacity: 0.7;
+    transform: scale(0.97);
+    transition: all 0.1s ease;
   }
 }

@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { format, addDays, startOfWeek, addWeeks, subWeeks } from "date-fns";
 import { fr } from "date-fns/locale";
+import { apiUrl } from "@/lib/api";
 
 interface MealPlan {
   id: number;
@@ -40,7 +41,7 @@ export default function CalendrierPage() {
   const loadMeals = useCallback(async () => {
     const start = format(currentWeek, "yyyy-MM-dd");
     const end = format(addDays(currentWeek, 6), "yyyy-MM-dd");
-    const res = await fetch(`/api/meal-plans?userId=1&startDate=${start}&endDate=${end}`);
+    const res = await fetch(apiUrl(`/api/meal-plans?userId=1&startDate=${start}&endDate=${end}`));
     const data = await res.json();
     setMeals(data);
   }, [currentWeek]);
@@ -50,7 +51,7 @@ export default function CalendrierPage() {
   }, [loadMeals]);
 
   const removeMeal = async (id: number) => {
-    await fetch(`/api/meal-plans?id=${id}`, { method: "DELETE" });
+    await fetch(apiUrl(`/api/meal-plans?id=${id}`), { method: "DELETE" });
     loadMeals();
   };
 

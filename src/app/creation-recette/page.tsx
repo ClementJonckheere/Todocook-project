@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Search, Plus, X, Minus, Save } from "lucide-react";
+import { apiUrl } from "@/lib/api";
 
 interface Ingredient {
   id: number;
@@ -38,7 +39,7 @@ export default function CreationRecettePage() {
   useEffect(() => {
     if (searchQuery.length >= 2) {
       const timer = setTimeout(async () => {
-        const res = await fetch(`/api/ingredients?search=${encodeURIComponent(searchQuery)}`);
+        const res = await fetch(apiUrl(`/api/ingredients?search=${encodeURIComponent(searchQuery)}`));
         const data = await res.json();
         setSearchResults(data);
       }, 300);
@@ -92,7 +93,7 @@ export default function CreationRecettePage() {
     if (!name || recipeIngredients.length === 0) return;
     setSaving(true);
 
-    await fetch("/api/recipes", {
+    await fetch(apiUrl("/api/recipes"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

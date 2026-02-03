@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Package, AlertTriangle, ChefHat, Trash2, Filter } from "lucide-react";
+import { apiUrl } from "@/lib/api";
 
 interface PantryItem {
   id: number;
@@ -40,15 +41,15 @@ export default function GardeMangerPage() {
 
   const loadData = async () => {
     const [pantryRes, missingRes] = await Promise.all([
-      fetch("/api/pantry?userId=1"),
-      fetch("/api/pantry/missing?userId=1"),
+      fetch(apiUrl("/api/pantry?userId=1")),
+      fetch(apiUrl("/api/pantry/missing?userId=1")),
     ]);
     setPantryItems(await pantryRes.json());
     setMissingItems(await missingRes.json());
   };
 
   const removeItem = async (id: number) => {
-    await fetch(`/api/pantry?id=${id}`, { method: "DELETE" });
+    await fetch(apiUrl(`/api/pantry?id=${id}`), { method: "DELETE" });
     loadData();
   };
 

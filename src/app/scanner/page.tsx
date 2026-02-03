@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { ScanBarcode, Plus, Check, AlertCircle, X, Keyboard } from "lucide-react";
+import { apiUrl } from "@/lib/api";
 
 interface Product {
   id: number;
@@ -71,7 +72,7 @@ export default function ScannerPage() {
   const lookupBarcode = async (barcode: string) => {
     setStatus("scanning");
     try {
-      const res = await fetch(`/api/scanner?barcode=${barcode}`);
+      const res = await fetch(apiUrl(`/api/scanner?barcode=${barcode}`));
       const data = await res.json();
 
       if (data.product) {
@@ -89,7 +90,7 @@ export default function ScannerPage() {
 
   const addToPantry = async () => {
     if (!product) return;
-    await fetch("/api/pantry", {
+    await fetch(apiUrl("/api/pantry"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
