@@ -1,89 +1,97 @@
 import { NextRequest, NextResponse } from "next/server";
-import getDb from "@/lib/db";
+import { query } from "@/lib/db";
 import { seedDatabase } from "@/lib/seed";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(request: NextRequest) {
-  const db = getDb();
-  seedDatabase();
+  await seedDatabase();
   const { searchParams } = new URL(request.url);
   const userId = searchParams.get("userId") || "1";
   const startDate = searchParams.get("startDate");
   const endDate = searchParams.get("endDate");
 
-  let plans;
+  let result;
   if (startDate && endDate) {
-    plans = db.prepare(`
-      SELECT mp.*, r.name as recipe_name, r.calories, r.protein, r.carbs, r.fat, r.image_url, r.prep_time, r.cook_time, r.servings
-      FROM meal_plans mp
-      JOIN recipes r ON mp.recipe_id = r.id
-      WHERE mp.user_id = ? AND mp.date >= ? AND mp.date <= ?
-      ORDER BY mp.date, mp.meal_type
-    `).all(userId, startDate, endDate);
+    result = await query(
+      `SELECT mp.*, r.name as recipe_name, r.calories, r.protein, r.carbs, r.fat, r.image_url, r.prep_time, r.cook_time, r.servings
+       FROM meal_plans mp
+       JOIN recipes r ON mp.recipe_id = r.id
+       WHERE mp.user_id = $1 AND mp.date >= $2 AND mp.date <= $3
+       ORDER BY mp.date, mp.meal_type`,
+      [userId, startDate, endDate]
+    );
   } else {
-    plans = db.prepare(`
-      SELECT mp.*, r.name as recipe_name, r.calories, r.protein, r.carbs, r.fat, r.image_url, r.prep_time, r.cook_time, r.servings
-      FROM meal_plans mp
-      JOIN recipes r ON mp.recipe_id = r.id
-      WHERE mp.user_id = ?
-      ORDER BY mp.date DESC, mp.meal_type
-      LIMIT 50
-    `).all(userId);
+    result = await query(
+      `SELECT mp.*, r.name as recipe_name, r.calories, r.protein, r.carbs, r.fat, r.image_url, r.prep_time, r.cook_time, r.servings
+       FROM meal_plans mp
+       JOIN recipes r ON mp.recipe_id = r.id
+       WHERE mp.user_id = $1
+       ORDER BY mp.date DESC, mp.meal_type
+       LIMIT 50`,
+      [userId]
+    );
   }
 
-  return NextResponse.json(plans);
+  return NextResponse.json(result.rows);
 }
 
 export async function POST(request: Request) {
-  const db = getDb();
   const body = await request.json();
   const { user_id, recipe_id, date, meal_type } = body;
 
-  const result = db.prepare(`
-    INSERT INTO meal_plans (user_id, recipe_id, date, meal_type)
-    VALUES (?, ?, ?, ?)
-  `).run(user_id || 1, recipe_id, date, meal_type || "dejeuner");
+  const { rows: planRows } = await query(
+    `INSERT INTO meal_plans (user_id, recipe_id, date, meal_type)
+     VALUES ($1, $2, $3, $4) RETURNING id`,
+    [user_id || 1, recipe_id, date, meal_type || "dejeuner"]
+  );
+  const planId = planRows[0].id;
 
   // Update daily log
-  const recipe = db.prepare("SELECT * FROM recipes WHERE id = ?").get(recipe_id) as any;
+  const { rows: recipeRows } = await query("SELECT * FROM recipes WHERE id = $1", [recipe_id]);
+  const recipe = recipeRows[0];
   if (recipe) {
-    const existing = db.prepare(
-      "SELECT * FROM daily_logs WHERE user_id = ? AND date = ?"
-    ).get(user_id || 1, date) as any;
+    const { rows: existing } = await query(
+      "SELECT * FROM daily_logs WHERE user_id = $1 AND date = $2",
+      [user_id || 1, date]
+    );
 
-    if (existing) {
-      db.prepare(`
-        UPDATE daily_logs SET
-          calories = calories + ?,
-          protein = protein + ?,
-          carbs = carbs + ?,
-          fat = fat + ?
-        WHERE id = ?
-      `).run(recipe.calories, recipe.protein, recipe.carbs, recipe.fat, existing.id);
+    if (existing.length > 0) {
+      await query(
+        `UPDATE daily_logs SET
+          calories = calories + $1,
+          protein = protein + $2,
+          carbs = carbs + $3,
+          fat = fat + $4
+        WHERE id = $5`,
+        [recipe.calories, recipe.protein, recipe.carbs, recipe.fat, existing[0].id]
+      );
     } else {
-      db.prepare(`
-        INSERT INTO daily_logs (user_id, date, calories, protein, carbs, fat)
-        VALUES (?, ?, ?, ?, ?, ?)
-      `).run(user_id || 1, date, recipe.calories, recipe.protein, recipe.carbs, recipe.fat);
+      await query(
+        `INSERT INTO daily_logs (user_id, date, calories, protein, carbs, fat)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [user_id || 1, date, recipe.calories, recipe.protein, recipe.carbs, recipe.fat]
+      );
     }
   }
 
-  const plan = db.prepare(`
-    SELECT mp.*, r.name as recipe_name, r.calories, r.protein, r.carbs, r.fat
-    FROM meal_plans mp
-    JOIN recipes r ON mp.recipe_id = r.id
-    WHERE mp.id = ?
-  `).get(result.lastInsertRowid);
+  const { rows } = await query(
+    `SELECT mp.*, r.name as recipe_name, r.calories, r.protein, r.carbs, r.fat
+     FROM meal_plans mp
+     JOIN recipes r ON mp.recipe_id = r.id
+     WHERE mp.id = $1`,
+    [planId]
+  );
 
-  return NextResponse.json(plan, { status: 201 });
+  return NextResponse.json(rows[0], { status: 201 });
 }
 
 export async function DELETE(request: Request) {
-  const db = getDb();
   const { searchParams } = new URL(request.url);
   const id = searchParams.get("id");
 
   if (id) {
-    db.prepare("DELETE FROM meal_plans WHERE id = ?").run(id);
+    await query("DELETE FROM meal_plans WHERE id = $1", [id]);
   }
 
   return NextResponse.json({ success: true });

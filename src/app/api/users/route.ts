@@ -1,16 +1,16 @@
 import { NextResponse } from "next/server";
-import getDb from "@/lib/db";
+import { query } from "@/lib/db";
 import { seedDatabase } from "@/lib/seed";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
-  const db = getDb();
-  seedDatabase();
-  const user = db.prepare("SELECT * FROM users WHERE id = 1").get();
-  return NextResponse.json(user);
+  await seedDatabase();
+  const { rows } = await query("SELECT * FROM users WHERE id = 1");
+  return NextResponse.json(rows[0] || null);
 }
 
 export async function PUT(request: Request) {
-  const db = getDb();
   const body = await request.json();
   const {
     first_name, last_name, age, weight, height,
@@ -18,27 +18,24 @@ export async function PUT(request: Request) {
     daily_calorie_goal, daily_protein_goal, daily_carbs_goal, daily_fat_goal,
   } = body;
 
-  db.prepare(`
-    UPDATE users SET
-      first_name = COALESCE(?, first_name),
-      last_name = COALESCE(?, last_name),
-      age = COALESCE(?, age),
-      weight = COALESCE(?, weight),
-      height = COALESCE(?, height),
-      gender = COALESCE(?, gender),
-      activity_level = COALESCE(?, activity_level),
-      daily_calorie_goal = COALESCE(?, daily_calorie_goal),
-      daily_protein_goal = COALESCE(?, daily_protein_goal),
-      daily_carbs_goal = COALESCE(?, daily_carbs_goal),
-      daily_fat_goal = COALESCE(?, daily_fat_goal),
-      updated_at = datetime('now')
-    WHERE id = 1
-  `).run(
-    first_name, last_name, age, weight, height,
-    gender, activity_level,
-    daily_calorie_goal, daily_protein_goal, daily_carbs_goal, daily_fat_goal
+  await query(
+    `UPDATE users SET
+      first_name = COALESCE($1, first_name),
+      last_name = COALESCE($2, last_name),
+      age = COALESCE($3, age),
+      weight = COALESCE($4, weight),
+      height = COALESCE($5, height),
+      gender = COALESCE($6, gender),
+      activity_level = COALESCE($7, activity_level),
+      daily_calorie_goal = COALESCE($8, daily_calorie_goal),
+      daily_protein_goal = COALESCE($9, daily_protein_goal),
+      daily_carbs_goal = COALESCE($10, daily_carbs_goal),
+      daily_fat_goal = COALESCE($11, daily_fat_goal),
+      updated_at = NOW()
+    WHERE id = 1`,
+    [first_name, last_name, age, weight, height, gender, activity_level, daily_calorie_goal, daily_protein_goal, daily_carbs_goal, daily_fat_goal]
   );
 
-  const user = db.prepare("SELECT * FROM users WHERE id = 1").get();
-  return NextResponse.json(user);
+  const { rows } = await query("SELECT * FROM users WHERE id = 1");
+  return NextResponse.json(rows[0]);
 }

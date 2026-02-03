@@ -1,66 +1,69 @@
 import { NextRequest, NextResponse } from "next/server";
-import getDb from "@/lib/db";
+import { query } from "@/lib/db";
 import { seedDatabase } from "@/lib/seed";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(request: NextRequest) {
-  const db = getDb();
-  seedDatabase();
+  await seedDatabase();
   const { searchParams } = new URL(request.url);
   const search = searchParams.get("search");
-  const userId = searchParams.get("userId");
+  const userId = searchParams.get("userId") || "1";
   const onlyUser = searchParams.get("onlyUser");
 
-  let recipes;
+  let result;
   if (search) {
-    recipes = db.prepare(`
-      SELECT r.*, GROUP_CONCAT(i.name, ', ') as ingredient_names
-      FROM recipes r
-      LEFT JOIN recipe_ingredients ri ON r.id = ri.recipe_id
-      LEFT JOIN ingredients i ON ri.ingredient_id = i.id
-      WHERE (r.is_public = 1 OR r.created_by = ?)
-        AND (r.name LIKE ? OR i.name LIKE ?)
-      GROUP BY r.id
-      ORDER BY r.name
-    `).all(userId || 1, `%${search}%`, `%${search}%`);
-  } else if (onlyUser === "true" && userId) {
-    recipes = db.prepare(`
-      SELECT r.*, GROUP_CONCAT(i.name, ', ') as ingredient_names
-      FROM recipes r
-      LEFT JOIN recipe_ingredients ri ON r.id = ri.recipe_id
-      LEFT JOIN ingredients i ON ri.ingredient_id = i.id
-      LEFT JOIN user_recipes ur ON r.id = ur.recipe_id AND ur.user_id = ?
-      WHERE r.created_by = ? OR ur.user_id = ?
-      GROUP BY r.id
-      ORDER BY r.name
-    `).all(userId, userId, userId);
+    result = await query(
+      `SELECT r.*, STRING_AGG(i.name, ', ') as ingredient_names
+       FROM recipes r
+       LEFT JOIN recipe_ingredients ri ON r.id = ri.recipe_id
+       LEFT JOIN ingredients i ON ri.ingredient_id = i.id
+       WHERE (r.is_public = true OR r.created_by = $1)
+         AND (r.name ILIKE $2 OR i.name ILIKE $2)
+       GROUP BY r.id
+       ORDER BY r.name`,
+      [userId, `%${search}%`]
+    );
+  } else if (onlyUser === "true") {
+    result = await query(
+      `SELECT r.*, STRING_AGG(i.name, ', ') as ingredient_names
+       FROM recipes r
+       LEFT JOIN recipe_ingredients ri ON r.id = ri.recipe_id
+       LEFT JOIN ingredients i ON ri.ingredient_id = i.id
+       LEFT JOIN user_recipes ur ON r.id = ur.recipe_id AND ur.user_id = $1
+       WHERE r.created_by = $1 OR ur.user_id = $1
+       GROUP BY r.id
+       ORDER BY r.name`,
+      [userId]
+    );
   } else {
-    recipes = db.prepare(`
-      SELECT r.*, GROUP_CONCAT(i.name, ', ') as ingredient_names
-      FROM recipes r
-      LEFT JOIN recipe_ingredients ri ON r.id = ri.recipe_id
-      LEFT JOIN ingredients i ON ri.ingredient_id = i.id
-      WHERE r.is_public = 1 OR r.created_by = ?
-      GROUP BY r.id
-      ORDER BY r.name
-    `).all(userId || 1);
+    result = await query(
+      `SELECT r.*, STRING_AGG(i.name, ', ') as ingredient_names
+       FROM recipes r
+       LEFT JOIN recipe_ingredients ri ON r.id = ri.recipe_id
+       LEFT JOIN ingredients i ON ri.ingredient_id = i.id
+       WHERE r.is_public = true OR r.created_by = $1
+       GROUP BY r.id
+       ORDER BY r.name`,
+      [userId]
+    );
   }
 
-  return NextResponse.json(recipes);
+  return NextResponse.json(result.rows);
 }
 
 export async function POST(request: Request) {
-  const db = getDb();
   const body = await request.json();
   const {
     name, description, instructions, prep_time, cook_time,
     servings, image_url, is_public, created_by, ingredients
   } = body;
 
-  // Calculate total nutrition from ingredients
   let totalCalories = 0, totalProtein = 0, totalCarbs = 0, totalFat = 0;
   if (ingredients && ingredients.length > 0) {
     for (const ing of ingredients) {
-      const ingredient = db.prepare("SELECT * FROM ingredients WHERE id = ?").get(ing.ingredient_id) as any;
+      const { rows } = await query("SELECT * FROM ingredients WHERE id = $1", [ing.ingredient_id]);
+      const ingredient = rows[0];
       if (ingredient) {
         const factor = ing.quantity / 100;
         totalCalories += ingredient.calories * factor;
@@ -71,38 +74,35 @@ export async function POST(request: Request) {
     }
   }
 
-  const result = db.prepare(`
-    INSERT INTO recipes (name, description, instructions, prep_time, cook_time, servings, calories, protein, carbs, fat, image_url, is_public, created_by)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(
-    name, description || null, instructions || null,
-    prep_time || null, cook_time || null, servings || 1,
-    Math.round(totalCalories), Math.round(totalProtein * 10) / 10,
-    Math.round(totalCarbs * 10) / 10, Math.round(totalFat * 10) / 10,
-    image_url || null, is_public ? 1 : 0, created_by || 1
+  const { rows: recipeRows } = await query(
+    `INSERT INTO recipes (name, description, instructions, prep_time, cook_time, servings, calories, protein, carbs, fat, image_url, is_public, created_by)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING id`,
+    [
+      name, description || null, instructions || null,
+      prep_time || null, cook_time || null, servings || 1,
+      Math.round(totalCalories), Math.round(totalProtein * 10) / 10,
+      Math.round(totalCarbs * 10) / 10, Math.round(totalFat * 10) / 10,
+      image_url || null, is_public ? true : false, created_by || 1
+    ]
   );
+  const recipeId = recipeRows[0].id;
 
-  const recipeId = result.lastInsertRowid;
-
-  // Insert recipe ingredients
   if (ingredients && ingredients.length > 0) {
-    const stmt = db.prepare(`
-      INSERT INTO recipe_ingredients (recipe_id, ingredient_id, quantity, unit)
-      VALUES (?, ?, ?, ?)
-    `);
     for (const ing of ingredients) {
-      stmt.run(recipeId, ing.ingredient_id, ing.quantity, ing.unit || "g");
+      await query(
+        `INSERT INTO recipe_ingredients (recipe_id, ingredient_id, quantity, unit) VALUES ($1, $2, $3, $4)`,
+        [recipeId, ing.ingredient_id, ing.quantity, ing.unit || "g"]
+      );
     }
   }
 
-  // Add to user's recipes
   if (created_by) {
-    db.prepare(`
-      INSERT OR IGNORE INTO user_recipes (user_id, recipe_id)
-      VALUES (?, ?)
-    `).run(created_by, recipeId);
+    await query(
+      `INSERT INTO user_recipes (user_id, recipe_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+      [created_by, recipeId]
+    );
   }
 
-  const recipe = db.prepare("SELECT * FROM recipes WHERE id = ?").get(recipeId);
-  return NextResponse.json(recipe, { status: 201 });
+  const { rows } = await query("SELECT * FROM recipes WHERE id = $1", [recipeId]);
+  return NextResponse.json(rows[0], { status: 201 });
 }

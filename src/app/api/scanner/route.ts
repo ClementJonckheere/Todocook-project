@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import getDb from "@/lib/db";
+import { query } from "@/lib/db";
+
+export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -9,12 +11,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Code-barres requis" }, { status: 400 });
   }
 
-  const db = getDb();
-
   // First check local database
-  const local = db.prepare("SELECT * FROM ingredients WHERE barcode = ?").get(barcode);
-  if (local) {
-    return NextResponse.json({ source: "local", product: local });
+  const { rows: localRows } = await query("SELECT * FROM ingredients WHERE barcode = $1", [barcode]);
+  if (localRows.length > 0) {
+    return NextResponse.json({ source: "local", product: localRows[0] });
   }
 
   // Then check OpenFoodFacts API
@@ -43,18 +43,16 @@ export async function GET(request: NextRequest) {
       };
 
       // Save to local database
-      db.prepare(`
-        INSERT OR IGNORE INTO ingredients (name, barcode, calories, protein, carbs, fat, fiber, unit, image_url, brand, category)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `).run(
-        product.name, product.barcode, product.calories,
-        product.protein, product.carbs, product.fat, product.fiber,
-        product.unit, product.image_url, product.brand, product.category
+      await query(
+        `INSERT INTO ingredients (name, barcode, calories, protein, carbs, fat, fiber, unit, image_url, brand, category)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+         ON CONFLICT (barcode) DO NOTHING`,
+        [product.name, product.barcode, product.calories, product.protein, product.carbs, product.fat, product.fiber, product.unit, product.image_url, product.brand, product.category]
       );
 
-      const saved = db.prepare("SELECT * FROM ingredients WHERE barcode = ?").get(barcode);
+      const { rows: saved } = await query("SELECT * FROM ingredients WHERE barcode = $1", [barcode]);
 
-      return NextResponse.json({ source: "openfoodfacts", product: saved });
+      return NextResponse.json({ source: "openfoodfacts", product: saved[0] });
     }
 
     return NextResponse.json({ source: "not_found", product: null }, { status: 404 });

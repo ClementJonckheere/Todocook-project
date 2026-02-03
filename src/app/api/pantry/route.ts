@@ -1,54 +1,57 @@
 import { NextRequest, NextResponse } from "next/server";
-import getDb from "@/lib/db";
+import { query } from "@/lib/db";
 import { seedDatabase } from "@/lib/seed";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(request: NextRequest) {
-  const db = getDb();
-  seedDatabase();
+  await seedDatabase();
   const { searchParams } = new URL(request.url);
   const userId = searchParams.get("userId") || "1";
 
-  const items = db.prepare(`
-    SELECT pi.*, i.name, i.calories, i.protein, i.carbs, i.fat, i.category, i.image_url, i.barcode
-    FROM pantry_items pi
-    JOIN ingredients i ON pi.ingredient_id = i.id
-    WHERE pi.user_id = ?
-    ORDER BY i.category, i.name
-  `).all(userId);
+  const { rows } = await query(
+    `SELECT pi.*, i.name, i.calories, i.protein, i.carbs, i.fat, i.category, i.image_url, i.barcode
+     FROM pantry_items pi
+     JOIN ingredients i ON pi.ingredient_id = i.id
+     WHERE pi.user_id = $1
+     ORDER BY i.category, i.name`,
+    [userId]
+  );
 
-  return NextResponse.json(items);
+  return NextResponse.json(rows);
 }
 
 export async function POST(request: Request) {
-  const db = getDb();
   const body = await request.json();
   const { user_id, ingredient_id, quantity, unit } = body;
 
   // Upsert: if already in pantry, update quantity
-  const existing = db.prepare(
-    "SELECT * FROM pantry_items WHERE user_id = ? AND ingredient_id = ?"
-  ).get(user_id || 1, ingredient_id) as any;
+  const { rows: existing } = await query(
+    "SELECT * FROM pantry_items WHERE user_id = $1 AND ingredient_id = $2",
+    [user_id || 1, ingredient_id]
+  );
 
-  if (existing) {
-    db.prepare(
-      "UPDATE pantry_items SET quantity = quantity + ?, unit = COALESCE(?, unit) WHERE id = ?"
-    ).run(quantity || 1, unit, existing.id);
+  if (existing.length > 0) {
+    await query(
+      "UPDATE pantry_items SET quantity = quantity + $1, unit = COALESCE($2, unit) WHERE id = $3",
+      [quantity || 1, unit, existing[0].id]
+    );
   } else {
-    db.prepare(
-      "INSERT INTO pantry_items (user_id, ingredient_id, quantity, unit) VALUES (?, ?, ?, ?)"
-    ).run(user_id || 1, ingredient_id, quantity || 1, unit || "g");
+    await query(
+      "INSERT INTO pantry_items (user_id, ingredient_id, quantity, unit) VALUES ($1, $2, $3, $4)",
+      [user_id || 1, ingredient_id, quantity || 1, unit || "g"]
+    );
   }
 
   return NextResponse.json({ success: true }, { status: 201 });
 }
 
 export async function DELETE(request: Request) {
-  const db = getDb();
   const { searchParams } = new URL(request.url);
   const id = searchParams.get("id");
 
   if (id) {
-    db.prepare("DELETE FROM pantry_items WHERE id = ?").run(id);
+    await query("DELETE FROM pantry_items WHERE id = $1", [id]);
   }
 
   return NextResponse.json({ success: true });

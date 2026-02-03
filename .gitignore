@@ -33,12 +33,5 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# prisma
-/prisma/*.db
-/prisma/*.db-journal
-
-# sqlite database
-/data/*.db
-/data/*.db-shm
-/data/*.db-wal
-/data/*.db-journal
+# local env
+.env.local

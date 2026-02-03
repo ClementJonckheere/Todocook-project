@@ -1,35 +1,36 @@
 import { NextRequest, NextResponse } from "next/server";
-import getDb from "@/lib/db";
+import { query } from "@/lib/db";
 import { seedDatabase } from "@/lib/seed";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(request: NextRequest) {
-  const db = getDb();
-  seedDatabase();
+  await seedDatabase();
   const { searchParams } = new URL(request.url);
   const search = searchParams.get("search");
 
-  let ingredients;
+  let result;
   if (search) {
-    ingredients = db.prepare(
-      "SELECT * FROM ingredients WHERE name LIKE ? OR brand LIKE ? ORDER BY name LIMIT 50"
-    ).all(`%${search}%`, `%${search}%`);
+    result = await query(
+      "SELECT * FROM ingredients WHERE name ILIKE $1 OR brand ILIKE $1 ORDER BY name LIMIT 50",
+      [`%${search}%`]
+    );
   } else {
-    ingredients = db.prepare("SELECT * FROM ingredients ORDER BY name").all();
+    result = await query("SELECT * FROM ingredients ORDER BY name");
   }
 
-  return NextResponse.json(ingredients);
+  return NextResponse.json(result.rows);
 }
 
 export async function POST(request: Request) {
-  const db = getDb();
   const body = await request.json();
   const { name, barcode, calories, protein, carbs, fat, fiber, unit, image_url, brand, category } = body;
 
-  const result = db.prepare(`
-    INSERT INTO ingredients (name, barcode, calories, protein, carbs, fat, fiber, unit, image_url, brand, category)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(name, barcode || null, calories || 0, protein || 0, carbs || 0, fat || 0, fiber || 0, unit || "g", image_url || null, brand || null, category || null);
+  const { rows } = await query(
+    `INSERT INTO ingredients (name, barcode, calories, protein, carbs, fat, fiber, unit, image_url, brand, category)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
+    [name, barcode || null, calories || 0, protein || 0, carbs || 0, fat || 0, fiber || 0, unit || "g", image_url || null, brand || null, category || null]
+  );
 
-  const ingredient = db.prepare("SELECT * FROM ingredients WHERE id = ?").get(result.lastInsertRowid);
-  return NextResponse.json(ingredient, { status: 201 });
+  return NextResponse.json(rows[0], { status: 201 });
 }
