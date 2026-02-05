@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
 import { ServiceWorkerRegistrar } from "@/components/ServiceWorkerRegistrar";
+import { AuthProvider } from "@/contexts/AuthContext";
+import { ThemeProvider } from "@/contexts/ThemeContext";
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -36,15 +38,25 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="fr">
+    <html lang="fr" suppressHydrationWarning>
       <head>
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
         <link rel="icon" type="image/png" href="/favicon.png" />
+        <script dangerouslySetInnerHTML={{ __html: `
+          (function() {
+            const theme = localStorage.getItem('todocook-theme') || 'light';
+            if (theme === 'dark') document.documentElement.classList.add('dark');
+          })();
+        `}} />
       </head>
-      <body className="min-h-screen bg-gray-50 pb-safe">
-        <main className="max-w-lg mx-auto safe-area-inset">{children}</main>
-        <Navbar />
-        <ServiceWorkerRegistrar />
+      <body className="min-h-screen bg-gray-50 dark:bg-gray-900 pb-safe transition-colors">
+        <AuthProvider>
+          <ThemeProvider>
+            <main className="max-w-lg mx-auto safe-area-inset">{children}</main>
+            <Navbar />
+            <ServiceWorkerRegistrar />
+          </ThemeProvider>
+        </AuthProvider>
       </body>
     </html>
   );
