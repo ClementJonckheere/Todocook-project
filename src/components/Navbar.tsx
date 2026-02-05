@@ -8,13 +8,15 @@ import {
   UtensilsCrossed,
   User,
   CalendarDays,
+  ShoppingCart,
 } from "lucide-react";
 
 const navItems = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/dashboard", label: "Accueil", icon: LayoutDashboard },
   { href: "/scanner", label: "Scanner", icon: ScanBarcode },
   { href: "/calendrier", label: "Calendrier", icon: CalendarDays },
   { href: "/garde-manger", label: "Garde-manger", icon: UtensilsCrossed },
+  { href: "/liste-courses", label: "Courses", icon: ShoppingCart },
   { href: "/profile", label: "Profil", icon: User },
 ];
 
@@ -22,14 +24,14 @@ export default function Navbar() {
   const pathname = usePathname();
 
   // Hide navbar on pages that shouldn't show it
-  const hiddenPaths = ["/creation-recette", "/suggestions-recettes"];
+  const hiddenPaths = ["/creation-recette", "/suggestions-recettes", "/login"];
   if (hiddenPaths.some((p) => pathname.startsWith(p))) {
     return null;
   }
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-gray-200 z-50"
+      className="fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-gray-800/95 backdrop-blur-md border-t border-gray-200 dark:border-gray-700 z-50"
       style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
     >
       <div className="max-w-lg mx-auto flex justify-around items-center h-16">
@@ -42,12 +44,12 @@ export default function Navbar() {
               href={item.href}
               className={`flex flex-col items-center justify-center w-full h-full touch-target touch-active transition-colors ${
                 isActive
-                  ? "text-primary-600"
-                  : "text-gray-400 hover:text-gray-600"
+                  ? "text-primary-600 dark:text-primary-400"
+                  : "text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
               }`}
             >
-              <Icon size={22} strokeWidth={isActive ? 2.5 : 2} />
-              <span className="text-[10px] mt-1 font-medium">{item.label}</span>
+              <Icon size={20} strokeWidth={isActive ? 2.5 : 2} />
+              <span className="text-[9px] mt-0.5 font-medium">{item.label}</span>
             </Link>
           );
         })}

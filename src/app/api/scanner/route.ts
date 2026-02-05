@@ -4,23 +4,27 @@ import { query } from "@/lib/db";
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url);
-  const barcode = searchParams.get("barcode");
-
-  if (!barcode) {
-    return NextResponse.json({ error: "Code-barres requis" }, { status: 400 });
-  }
-
-  // First check local database
-  const { rows: localRows } = await query("SELECT * FROM ingredients WHERE barcode = $1", [barcode]);
-  if (localRows.length > 0) {
-    return NextResponse.json({ source: "local", product: localRows[0] });
-  }
-
-  // Then check OpenFoodFacts API
   try {
+    const { searchParams } = new URL(request.url);
+    const barcode = searchParams.get("barcode");
+
+    if (!barcode) {
+      return NextResponse.json({ error: "Code-barres requis" }, { status: 400 });
+    }
+
+    if (barcode.length > 50) {
+      return NextResponse.json({ error: "Code-barres invalide" }, { status: 400 });
+    }
+
+    // First check local database
+    const { rows: localRows } = await query("SELECT * FROM ingredients WHERE barcode = $1", [barcode]);
+    if (localRows.length > 0) {
+      return NextResponse.json({ source: "local", product: localRows[0] });
+    }
+
+    // Then check OpenFoodFacts API
     const response = await fetch(
-      `https://world.openfoodfacts.org/api/v2/product/${barcode}.json`
+      `https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(barcode)}.json`
     );
     const data = await response.json();
 
@@ -56,7 +60,8 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json({ source: "not_found", product: null }, { status: 404 });
-  } catch {
+  } catch (error) {
+    console.error("GET /api/scanner error:", error);
     return NextResponse.json(
       { error: "Erreur lors de la recherche du produit" },
       { status: 500 }

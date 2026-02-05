@@ -15,6 +15,7 @@ async function initializeDatabase() {
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
         email TEXT UNIQUE NOT NULL,
+        password_hash TEXT,
         first_name TEXT NOT NULL,
         last_name TEXT NOT NULL,
         age INTEGER,
@@ -111,6 +112,25 @@ async function initializeDatabase() {
         fat DOUBLE PRECISION DEFAULT 0,
         created_at TIMESTAMP DEFAULT NOW(),
         UNIQUE(user_id, date)
+      );
+
+      CREATE TABLE IF NOT EXISTS recipe_favorites (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        recipe_id INTEGER NOT NULL REFERENCES recipes(id) ON DELETE CASCADE,
+        created_at TIMESTAMP DEFAULT NOW(),
+        UNIQUE(user_id, recipe_id)
+      );
+
+      CREATE TABLE IF NOT EXISTS recipe_ratings (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        recipe_id INTEGER NOT NULL REFERENCES recipes(id) ON DELETE CASCADE,
+        rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
+        comment TEXT,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW(),
+        UNIQUE(user_id, recipe_id)
       );
     `);
     initialized = true;
