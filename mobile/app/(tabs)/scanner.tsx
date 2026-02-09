@@ -45,12 +45,13 @@ export default function ScannerScreen() {
     try {
       const res = await fetch(apiUrl(`/api/scanner?barcode=${barcode}`));
       const data = await res.json();
-      if (data.error) {
+      if (data.error || !data.product) {
         Alert.alert("Produit non trouvé", "Ce code-barres n'a pas été reconnu.");
       } else {
-        setProduct(data);
+        setProduct(data.product);
       }
-    } catch {
+    } catch (err) {
+      console.error("Scanner error:", err);
       Alert.alert("Erreur", "Impossible de rechercher ce produit.");
     }
     setLoading(false);
