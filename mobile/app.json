@@ -14,31 +14,21 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.todocook.app",
-      "infoPlist": {
-        "NSCameraUsageDescription": "TodoCook utilise la caméra pour scanner les codes-barres des produits alimentaires."
-      }
+      "bundleIdentifier": "com.todocook.app"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#16a34a"
       },
-      "package": "com.todocook.app",
-      "permissions": ["CAMERA"]
+      "package": "com.todocook.app"
     },
     "web": {
       "favicon": "./assets/favicon.png",
       "bundler": "metro"
     },
     "plugins": [
-      "expo-router",
-      [
-        "expo-camera",
-        {
-          "cameraPermission": "TodoCook utilise la caméra pour scanner les codes-barres."
-        }
-      ]
+      "expo-router"
     ]
   }
 }
