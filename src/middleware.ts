@@ -5,7 +5,14 @@ export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Public routes that don't require auth
-  const publicPaths = ["/login", "/api/auth/login", "/api/auth/register", "/api/auth/logout"];
+  const publicPaths = [
+    "/login",
+    "/api/auth/login",
+    "/api/auth/register",
+    "/api/auth/logout",
+    "/api/scanner",      // Allow barcode scanning without auth
+    "/api/ingredients",  // Allow ingredient search without auth
+  ];
   const isPublicPath = publicPaths.some((p) => pathname.startsWith(p));
 
   // Static files
