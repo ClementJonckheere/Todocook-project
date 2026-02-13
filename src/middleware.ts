@@ -13,6 +13,13 @@ export function middleware(request: NextRequest) {
     "/api/scanner",      // Allow barcode scanning without auth
     "/api/ingredients",  // Allow ingredient search without auth
     "/api/pantry",       // Allow pantry management without auth (for mobile)
+    "/api/users",        // Allow user profile without auth (for mobile)
+    "/api/recipes",      // Allow recipes without auth (for mobile)
+    "/api/meal-plans",   // Allow meal plans without auth (for mobile)
+    "/api/daily-logs",   // Allow daily logs without auth (for mobile)
+    "/api/suggestions",  // Allow suggestions without auth (for mobile)
+    "/api/favorites",    // Allow favorites without auth (for mobile)
+    "/api/ratings",      // Allow ratings without auth (for mobile)
   ];
   const isPublicPath = publicPaths.some((p) => pathname.startsWith(p));
 
