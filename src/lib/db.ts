@@ -11,6 +11,19 @@ async function initializeDatabase() {
 
   const client = await pool.connect();
   try {
+    // Check if tables already exist to avoid recreation errors
+    const { rows } = await client.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'users'
+      )
+    `);
+
+    if (rows[0].exists) {
+      initialized = true;
+      return;
+    }
+
     await client.query(`
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
