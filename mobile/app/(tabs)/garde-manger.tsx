@@ -45,10 +45,24 @@ export default function GardeMangerScreen() {
         fetch(apiUrl("/api/pantry?userId=1")),
         fetch(apiUrl("/api/pantry/missing?userId=1")),
       ]);
-      setPantryItems(await pantryRes.json());
-      setMissingItems(await missingRes.json());
-    } catch {
-      // API not reachable
+
+      // Check if responses are ok
+      if (!pantryRes.ok || !missingRes.ok) {
+        console.error("API error:", pantryRes.status, missingRes.status);
+        return;
+      }
+
+      const pantryData = await pantryRes.json();
+      const missingData = await missingRes.json();
+
+      // Ensure we have arrays
+      setPantryItems(Array.isArray(pantryData) ? pantryData : []);
+      setMissingItems(Array.isArray(missingData) ? missingData : []);
+    } catch (err) {
+      console.error("Load data error:", err);
+      // Keep empty arrays on error
+      setPantryItems([]);
+      setMissingItems([]);
     }
   };
 
