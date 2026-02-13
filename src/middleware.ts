@@ -12,6 +12,7 @@ export function middleware(request: NextRequest) {
     "/api/auth/logout",
     "/api/scanner",      // Allow barcode scanning without auth
     "/api/ingredients",  // Allow ingredient search without auth
+    "/api/pantry",       // Allow pantry management without auth (for mobile)
   ];
   const isPublicPath = publicPaths.some((p) => pathname.startsWith(p));
 

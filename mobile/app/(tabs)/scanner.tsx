@@ -77,19 +77,24 @@ export default function ScannerScreen() {
   const addToPantry = async () => {
     if (!product) return;
     try {
-      await fetch(apiUrl("/api/pantry"), {
+      const res = await fetch(`${API_URL}/api/pantry`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           user_id: 1,
-          ingredient_name: product.name,
-          barcode: product.barcode,
+          ingredient_id: product.id,
           quantity: 1,
           unit: "unité",
         }),
       });
+      if (!res.ok) {
+        const text = await res.text();
+        console.error("Pantry error:", text);
+        throw new Error("Failed to add");
+      }
       setAdded(true);
-    } catch {
+    } catch (err) {
+      console.error("Add to pantry error:", err);
       Alert.alert("Erreur", "Impossible d'ajouter au garde-manger.");
     }
   };
