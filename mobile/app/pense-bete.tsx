@@ -39,6 +39,8 @@ export default function PenseBeteScreen() {
   const [showNewListForm, setShowNewListForm] = useState(false);
   const [selectedList, setSelectedList] = useState<ShoppingList | null>(null);
   const [newItemName, setNewItemName] = useState("");
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [editedTitle, setEditedTitle] = useState("");
 
   const loadLists = async () => {
     try {
@@ -107,6 +109,40 @@ export default function PenseBeteScreen() {
     } catch (err) {
       console.error("Duplicate list error:", err);
     }
+  };
+
+  const startEditingTitle = () => {
+    if (selectedList) {
+      setEditedTitle(selectedList.title);
+      setIsEditingTitle(true);
+    }
+  };
+
+  const updateListTitle = async () => {
+    if (!selectedList || !editedTitle.trim()) {
+      setIsEditingTitle(false);
+      return;
+    }
+    const newTitle = editedTitle.trim();
+    if (newTitle === selectedList.title) {
+      setIsEditingTitle(false);
+      return;
+    }
+    try {
+      const res = await fetch(apiUrl(`/api/shopping-lists/${selectedList.id}`), {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: newTitle }),
+      });
+      if (res.ok) {
+        const updatedList = { ...selectedList, title: newTitle };
+        setSelectedList(updatedList);
+        setLists(lists.map((l) => (l.id === selectedList.id ? updatedList : l)));
+      }
+    } catch (err) {
+      console.error("Update list title error:", err);
+    }
+    setIsEditingTitle(false);
   };
 
   const addItem = async () => {
@@ -237,11 +273,26 @@ export default function PenseBeteScreen() {
     return (
       <SafeAreaView style={s.container}>
         <View style={s.header}>
-          <TouchableOpacity onPress={() => setSelectedList(null)} style={s.backBtn}>
+          <TouchableOpacity onPress={() => { setSelectedList(null); setIsEditingTitle(false); }} style={s.backBtn}>
             <Ionicons name="chevron-back" size={24} color={colors.gray[600]} />
           </TouchableOpacity>
           <View style={s.headerTitle}>
-            <Text style={s.title}>{selectedList.title}</Text>
+            {isEditingTitle ? (
+              <TextInput
+                style={s.editTitleInput}
+                value={editedTitle}
+                onChangeText={setEditedTitle}
+                onBlur={updateListTitle}
+                onSubmitEditing={updateListTitle}
+                autoFocus
+                selectTextOnFocus
+                returnKeyType="done"
+              />
+            ) : (
+              <TouchableOpacity onPress={startEditingTitle} activeOpacity={0.7}>
+                <Text style={s.title}>{selectedList.title}</Text>
+              </TouchableOpacity>
+            )}
             <Text style={s.subtitle}>{selectedList.items.length} articles</Text>
           </View>
           <View style={s.headerActions}>
@@ -432,6 +483,17 @@ const s = StyleSheet.create({
   backBtn: { padding: 4, marginRight: 8 },
   headerTitle: { flex: 1 },
   title: { fontSize: 18, fontWeight: "bold", color: colors.gray[900] },
+  editTitleInput: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: colors.gray[900],
+    paddingVertical: 2,
+    paddingHorizontal: 8,
+    marginLeft: -8,
+    backgroundColor: colors.gray[100],
+    borderRadius: 6,
+    minWidth: 150,
+  },
   subtitle: { fontSize: 12, color: colors.gray[500], marginTop: 2 },
   headerActions: { flexDirection: "row", gap: 4 },
   actionBtn: { padding: 8 },
