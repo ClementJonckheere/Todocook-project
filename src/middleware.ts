@@ -20,6 +20,7 @@ export function middleware(request: NextRequest) {
     "/api/suggestions",  // Allow suggestions without auth (for mobile)
     "/api/favorites",    // Allow favorites without auth (for mobile)
     "/api/ratings",      // Allow ratings without auth (for mobile)
+    "/api/shopping-lists", // Allow shopping lists without auth (for mobile)
   ];
   const isPublicPath = publicPaths.some((p) => pathname.startsWith(p));
 

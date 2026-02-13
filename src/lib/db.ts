@@ -132,6 +132,22 @@ async function initializeDatabase() {
         updated_at TIMESTAMP DEFAULT NOW(),
         UNIQUE(user_id, recipe_id)
       );
+
+      CREATE TABLE IF NOT EXISTS shopping_lists (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        title TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS shopping_list_items (
+        id SERIAL PRIMARY KEY,
+        list_id INTEGER NOT NULL REFERENCES shopping_lists(id) ON DELETE CASCADE,
+        name TEXT NOT NULL,
+        checked BOOLEAN DEFAULT false,
+        created_at TIMESTAMP DEFAULT NOW()
+      );
     `);
     initialized = true;
   } finally {

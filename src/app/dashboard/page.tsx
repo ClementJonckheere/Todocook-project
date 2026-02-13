@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Search, Plus, ChevronLeft, ChevronRight, X, Flame, Heart, Star } from "lucide-react";
+import { Search, Plus, ChevronLeft, ChevronRight, X, Flame, Heart, Star, ClipboardList } from "lucide-react";
+import Link from "next/link";
 import { format, addDays, startOfWeek } from "date-fns";
 import { fr } from "date-fns/locale";
 import { apiUrl } from "@/lib/api";
@@ -164,11 +165,20 @@ export default function DashboardPage() {
               {user ? `${user.first_name} ${user.last_name}` : "..."}
             </h1>
           </div>
-          <div className="flex items-center gap-2 bg-orange-50 dark:bg-orange-900/30 px-3 py-2 rounded-xl">
-            <Flame size={20} className="text-orange-500" />
-            <div className="text-right">
-              <p className="text-lg font-bold text-orange-600 dark:text-orange-400">{Math.round(todayCalories)}</p>
-              <p className="text-[10px] text-orange-400">/ {user?.daily_calorie_goal || 2000} kcal</p>
+          <div className="flex items-center gap-3">
+            <Link
+              href="/pense-bete"
+              className="p-2 bg-primary-50 dark:bg-primary-900/30 rounded-xl hover:bg-primary-100 dark:hover:bg-primary-900/50 transition-colors"
+              title="Pense-bête courses"
+            >
+              <ClipboardList size={20} className="text-primary-600 dark:text-primary-400" />
+            </Link>
+            <div className="flex items-center gap-2 bg-orange-50 dark:bg-orange-900/30 px-3 py-2 rounded-xl">
+              <Flame size={20} className="text-orange-500" />
+              <div className="text-right">
+                <p className="text-lg font-bold text-orange-600 dark:text-orange-400">{Math.round(todayCalories)}</p>
+                <p className="text-[10px] text-orange-400">/ {user?.daily_calorie_goal || 2000} kcal</p>
+              </div>
             </div>
           </div>
         </div>
