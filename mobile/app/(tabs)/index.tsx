@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import { format, addDays, startOfWeek } from "date-fns";
 import { fr } from "date-fns/locale";
 import { apiUrl } from "../../src/lib/api";
@@ -48,6 +49,7 @@ const mealTypes = [
 ];
 
 export default function DashboardScreen() {
+  const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [todayCalories, setTodayCalories] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
@@ -176,6 +178,20 @@ export default function DashboardScreen() {
           </View>
         </View>
 
+        {/* Quick Actions */}
+        <View style={s.quickActions}>
+          <TouchableOpacity
+            style={s.quickActionBtn}
+            onPress={() => router.push("/pense-bete")}
+          >
+            <View style={[s.quickActionIcon, { backgroundColor: colors.blue[100] }]}>
+              <Ionicons name="cart-outline" size={22} color={colors.blue[600]} />
+            </View>
+            <Text style={s.quickActionText}>Listes de courses</Text>
+            <Ionicons name="chevron-forward" size={18} color={colors.gray[400]} />
+          </TouchableOpacity>
+        </View>
+
         {/* Search */}
         {showSearch && (
           <View style={s.searchCard}>
@@ -292,6 +308,10 @@ const s = StyleSheet.create({
   calorieText: { fontSize: 16, fontWeight: "700", color: colors.gray[900] },
   progressBg: { height: 8, backgroundColor: colors.gray[100], borderRadius: 4, overflow: "hidden" },
   progressBar: { height: 8, borderRadius: 4 },
+  quickActions: { marginHorizontal: 20, marginTop: 16 },
+  quickActionBtn: { flexDirection: "row", alignItems: "center", backgroundColor: colors.white, borderRadius: 14, padding: 14, shadowColor: "#000", shadowOpacity: 0.03, shadowRadius: 4, elevation: 1 },
+  quickActionIcon: { width: 40, height: 40, borderRadius: 10, justifyContent: "center", alignItems: "center", marginRight: 12 },
+  quickActionText: { flex: 1, fontSize: 15, fontWeight: "600", color: colors.gray[900] },
   searchCard: { marginHorizontal: 20, marginTop: 12, backgroundColor: colors.white, borderRadius: 16, padding: 16, shadowColor: "#000", shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 },
   searchInput: { backgroundColor: colors.gray[50], borderRadius: 12, paddingHorizontal: 16, paddingVertical: 12, fontSize: 15, borderWidth: 1, borderColor: colors.gray[200] },
   searchResult: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.gray[100] },
