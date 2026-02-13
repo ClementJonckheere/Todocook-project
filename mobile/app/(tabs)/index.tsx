@@ -66,19 +66,37 @@ export default function DashboardScreen() {
         fetch(apiUrl("/api/users")),
         fetch(apiUrl(`/api/meal-plans?userId=1&startDate=${today}&endDate=${today}`)),
       ]);
+
+      // Check if responses are ok
+      if (!userRes.ok || !mealsRes.ok) {
+        console.error("API error:", userRes.status, mealsRes.status);
+        return;
+      }
+
       const userData = await userRes.json();
       const mealsData = await mealsRes.json();
-      setUser(userData);
-      setTodayMeals(mealsData);
-      setTodayCalories(mealsData.reduce((sum: number, m: MealPlan) => sum + (m.calories || 0), 0));
+
+      // Ensure we have valid data
+      if (userData && typeof userData === 'object') {
+        setUser(userData);
+      }
+      const mealsArray = Array.isArray(mealsData) ? mealsData : [];
+      setTodayMeals(mealsArray);
+      setTodayCalories(mealsArray.reduce((sum: number, m: MealPlan) => sum + (m.calories || 0), 0));
 
       const monday = startOfWeek(new Date(), { weekStartsOn: 1 });
       const weekRes = await fetch(
         apiUrl(`/api/meal-plans?userId=1&startDate=${format(monday, "yyyy-MM-dd")}&endDate=${format(addDays(monday, 6), "yyyy-MM-dd")}`)
       );
-      setWeekMeals(await weekRes.json());
-    } catch {
-      // API not reachable
+      if (weekRes.ok) {
+        const weekData = await weekRes.json();
+        setWeekMeals(Array.isArray(weekData) ? weekData : []);
+      }
+    } catch (err) {
+      console.error("Load data error:", err);
+      // Keep empty arrays on error
+      setTodayMeals([]);
+      setWeekMeals([]);
     }
   }, [today]);
 
