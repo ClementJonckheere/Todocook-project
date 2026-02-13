@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/lib/db";
+import { getAuthUser } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -9,11 +10,13 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
+    const authUser = await getAuthUser();
+    const userId = authUser?.id || 1;
     const { id } = params;
 
     const { rows: lists } = await query(
-      `SELECT * FROM shopping_lists WHERE id = $1`,
-      [id]
+      `SELECT * FROM shopping_lists WHERE id = $1 AND user_id = $2`,
+      [id, userId]
     );
 
     if (lists.length === 0) {
@@ -38,24 +41,37 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
+    const authUser = await getAuthUser();
+    const userId = authUser?.id || 1;
     const { id } = params;
     const body = await request.json();
     const { title } = body;
 
     if (title !== undefined) {
-      await query(
-        `UPDATE shopping_lists SET title = $1, updated_at = NOW() WHERE id = $2`,
-        [title.trim(), id]
+      if (!title.trim()) {
+        return NextResponse.json({ error: "Le titre ne peut pas être vide" }, { status: 400 });
+      }
+      if (title.trim().length > 200) {
+        return NextResponse.json({ error: "Le titre ne peut pas dépasser 200 caractères" }, { status: 400 });
+      }
+      const result = await query(
+        `UPDATE shopping_lists SET title = $1, updated_at = NOW() WHERE id = $2 AND user_id = $3`,
+        [title.trim(), id, userId]
       );
+      if (result.rowCount === 0) {
+        return NextResponse.json({ error: "Liste non trouvée" }, { status: 404 });
+      }
     } else {
-      // Just touch updated_at
       await query(
-        `UPDATE shopping_lists SET updated_at = NOW() WHERE id = $1`,
-        [id]
+        `UPDATE shopping_lists SET updated_at = NOW() WHERE id = $1 AND user_id = $2`,
+        [id, userId]
       );
     }
 
-    const { rows } = await query(`SELECT * FROM shopping_lists WHERE id = $1`, [id]);
+    const { rows } = await query(`SELECT * FROM shopping_lists WHERE id = $1 AND user_id = $2`, [id, userId]);
+    if (rows.length === 0) {
+      return NextResponse.json({ error: "Liste non trouvée" }, { status: 404 });
+    }
     return NextResponse.json(rows[0]);
   } catch (error) {
     console.error("PUT /api/shopping-lists/[id] error:", error);
@@ -69,8 +85,13 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
+    const authUser = await getAuthUser();
+    const userId = authUser?.id || 1;
     const { id } = params;
-    await query(`DELETE FROM shopping_lists WHERE id = $1`, [id]);
+    const result = await query(`DELETE FROM shopping_lists WHERE id = $1 AND user_id = $2`, [id, userId]);
+    if (result.rowCount === 0) {
+      return NextResponse.json({ error: "Liste non trouvée" }, { status: 404 });
+    }
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("DELETE /api/shopping-lists/[id] error:", error);

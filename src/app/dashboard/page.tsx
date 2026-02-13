@@ -65,8 +65,8 @@ export default function DashboardPage() {
       setTodayCalories(
         (Array.isArray(mealsData) ? mealsData : []).reduce((sum: number, m: MealPlan) => sum + (m.calories || 0), 0)
       );
-    } catch {
-      // Network error
+    } catch (err) {
+      console.error("Failed to load today's data:", err);
     }
   }, [today]);
 
@@ -105,20 +105,23 @@ export default function DashboardPage() {
       setSearchResults((prev) =>
         prev.map((r) => (r.id === recipeId ? { ...r, is_favorite: !isFavorite } : r))
       );
-    } catch {
-      // Silently fail
+    } catch (err) {
+      console.error("Failed to toggle favorite:", err);
     }
   };
 
   const addRecipeToDay = async (recipeId: number, date: string, mealType: string) => {
     try {
-      await fetch(apiUrl("/api/meal-plans"), {
+      const res = await fetch(apiUrl("/api/meal-plans"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ recipe_id: recipeId, date, meal_type: mealType }),
       });
-    } catch {
-      // Silently fail
+      if (!res.ok) {
+        console.error("Failed to add recipe:", await res.text());
+      }
+    } catch (err) {
+      console.error("Failed to add recipe to day:", err);
     }
     setSelectedRecipe(null);
     setShowCalendar(false);
@@ -129,9 +132,12 @@ export default function DashboardPage() {
 
   const removeMeal = async (id: number) => {
     try {
-      await fetch(apiUrl(`/api/meal-plans?id=${id}`), { method: "DELETE" });
-    } catch {
-      // Silently fail
+      const res = await fetch(apiUrl(`/api/meal-plans?id=${id}`), { method: "DELETE" });
+      if (!res.ok) {
+        console.error("Failed to remove meal:", await res.text());
+      }
+    } catch (err) {
+      console.error("Failed to remove meal:", err);
     }
     loadTodayData();
   };

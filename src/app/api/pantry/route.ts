@@ -1,13 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/lib/db";
-import { seedDatabase } from "@/lib/seed";
 import { getAuthUser } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   try {
-    await seedDatabase();
     const authUser = await getAuthUser();
     const userId = authUser?.id || 1;
 

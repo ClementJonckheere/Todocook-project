@@ -14,11 +14,10 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "../../src/theme/colors";
-
-// HARDCODED API URL - change this to your computer's local IP
-const API_URL = "http://192.168.86.35:3000";
+import { apiUrl } from "../../src/lib/api";
 
 interface Product {
+  id: number;
   name: string;
   brand: string;
   category: string;
@@ -44,24 +43,16 @@ export default function ScannerScreen() {
     setLoading(true);
     setProduct(null);
     setAdded(false);
-    const url = `${API_URL}/api/scanner?barcode=${barcode}`;
-    console.log("Fetching URL:", url);
+    const url = apiUrl(`/api/scanner?barcode=${barcode}`);
     try {
       const res = await fetch(url);
-      const text = await res.text();
-      console.log("Response:", text.substring(0, 200));
-
-      // Try to parse JSON
-      let data;
-      try {
-        data = JSON.parse(text);
-      } catch (parseErr) {
-        console.error("JSON parse error, response was:", text.substring(0, 500));
-        Alert.alert("Erreur", `Réponse invalide du serveur. URL: ${url}`);
+      if (!res.ok) {
+        Alert.alert("Erreur", "Erreur serveur lors de la recherche du produit.");
         setLoading(false);
         return;
       }
 
+      const data = await res.json();
       if (data.error || !data.product) {
         Alert.alert("Produit non trouvé", "Ce code-barres n'a pas été reconnu.");
       } else {
@@ -69,7 +60,7 @@ export default function ScannerScreen() {
       }
     } catch (err) {
       console.error("Scanner error:", err);
-      Alert.alert("Erreur", `Impossible de contacter: ${url}`);
+      Alert.alert("Erreur", "Impossible de contacter le serveur.");
     }
     setLoading(false);
   };
@@ -77,7 +68,7 @@ export default function ScannerScreen() {
   const addToPantry = async () => {
     if (!product) return;
     try {
-      const res = await fetch(`${API_URL}/api/pantry`, {
+      const res = await fetch(apiUrl("/api/pantry"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/lib/db";
+import { getAuthUser } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -9,10 +10,15 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
+    const authUser = await getAuthUser();
+    const userId = authUser?.id || 1;
     const { id } = params;
 
-    // Get original list
-    const { rows: lists } = await query(`SELECT * FROM shopping_lists WHERE id = $1`, [id]);
+    // Get original list (with ownership check)
+    const { rows: lists } = await query(
+      `SELECT * FROM shopping_lists WHERE id = $1 AND user_id = $2`,
+      [id, userId]
+    );
     if (lists.length === 0) {
       return NextResponse.json({ error: "Liste non trouvée" }, { status: 404 });
     }
@@ -22,7 +28,7 @@ export async function POST(
     // Create duplicate list
     const { rows: newLists } = await query(
       `INSERT INTO shopping_lists (user_id, title) VALUES ($1, $2) RETURNING *`,
-      [original.user_id, `${original.title} (copie)`]
+      [userId, `${original.title} (copie)`]
     );
 
     const newList = newLists[0];

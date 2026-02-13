@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/lib/db";
+import { getAuthUser } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -9,14 +10,24 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
+    const authUser = await getAuthUser();
+    const userId = authUser?.id || 1;
     const { id } = params;
+
+    // Verify ownership
+    const { rows: lists } = await query(
+      `SELECT id FROM shopping_lists WHERE id = $1 AND user_id = $2`,
+      [id, userId]
+    );
+    if (lists.length === 0) {
+      return NextResponse.json({ error: "Liste non trouvée" }, { status: 404 });
+    }
 
     await query(
       `UPDATE shopping_list_items SET checked = false WHERE list_id = $1`,
       [id]
     );
 
-    // Update list's updated_at
     await query(`UPDATE shopping_lists SET updated_at = NOW() WHERE id = $1`, [id]);
 
     return NextResponse.json({ success: true });

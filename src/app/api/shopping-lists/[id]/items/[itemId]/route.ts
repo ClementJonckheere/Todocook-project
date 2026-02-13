@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/lib/db";
+import { getAuthUser } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -9,14 +10,33 @@ export async function PUT(
   { params }: { params: { id: string; itemId: string } }
 ) {
   try {
+    const authUser = await getAuthUser();
+    const userId = authUser?.id || 1;
     const { id, itemId } = params;
     const body = await request.json();
     const { checked } = body;
 
-    await query(
+    if (typeof checked !== "boolean") {
+      return NextResponse.json({ error: "checked doit être un booléen" }, { status: 400 });
+    }
+
+    // Verify list ownership
+    const { rows: lists } = await query(
+      `SELECT id FROM shopping_lists WHERE id = $1 AND user_id = $2`,
+      [id, userId]
+    );
+    if (lists.length === 0) {
+      return NextResponse.json({ error: "Liste non trouvée" }, { status: 404 });
+    }
+
+    const result = await query(
       `UPDATE shopping_list_items SET checked = $1 WHERE id = $2 AND list_id = $3`,
       [checked, itemId, id]
     );
+
+    if (result.rowCount === 0) {
+      return NextResponse.json({ error: "Article non trouvé" }, { status: 404 });
+    }
 
     // Update list's updated_at
     await query(`UPDATE shopping_lists SET updated_at = NOW() WHERE id = $1`, [id]);
@@ -35,7 +55,18 @@ export async function DELETE(
   { params }: { params: { id: string; itemId: string } }
 ) {
   try {
+    const authUser = await getAuthUser();
+    const userId = authUser?.id || 1;
     const { id, itemId } = params;
+
+    // Verify list ownership
+    const { rows: lists } = await query(
+      `SELECT id FROM shopping_lists WHERE id = $1 AND user_id = $2`,
+      [id, userId]
+    );
+    if (lists.length === 0) {
+      return NextResponse.json({ error: "Liste non trouvée" }, { status: 404 });
+    }
 
     await query(`DELETE FROM shopping_list_items WHERE id = $1 AND list_id = $2`, [itemId, id]);
 

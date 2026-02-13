@@ -150,6 +150,9 @@ async function initializeDatabase() {
       );
     `);
     initialized = true;
+    // Seed database with initial data if empty (dynamic import to avoid circular dependency)
+    const { seedDatabase } = await import("./seed");
+    await seedDatabase();
   } finally {
     client.release();
   }
