@@ -115,11 +115,13 @@ export default function PenseBetePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title: editTitle.trim() }),
       });
-      setLists(
-        lists.map((l) => (l.id === id ? { ...l, title: editTitle.trim() } : l))
-      );
-      if (selectedList?.id === id) {
-        setSelectedList({ ...selectedList, title: editTitle.trim() });
+      const updatedList = lists.find(l => l.id === id);
+      if (updatedList) {
+        const newList = { ...updatedList, title: editTitle.trim() };
+        setLists(moveListToTop(lists, newList));
+        if (selectedList?.id === id) {
+          setSelectedList(newList);
+        }
       }
       setEditingTitle(null);
     } catch (err) {
@@ -141,9 +143,10 @@ export default function PenseBetePage() {
           ...selectedList,
           items: [...selectedList.items, newItem],
           total_items: selectedList.total_items + 1,
+          updated_at: new Date().toISOString(),
         };
         setSelectedList(updatedList);
-        setLists(lists.map((l) => (l.id === selectedList.id ? updatedList : l)));
+        setLists(moveListToTop(lists, updatedList));
         setNewItemName("");
       }
     } catch (err) {
@@ -167,9 +170,10 @@ export default function PenseBetePage() {
         ...selectedList,
         items: updatedItems,
         checked_items: checkedCount,
+        updated_at: new Date().toISOString(),
       };
       setSelectedList(updatedList);
-      setLists(lists.map((l) => (l.id === selectedList.id ? updatedList : l)));
+      setLists(moveListToTop(lists, updatedList));
     } catch (err) {
       console.error("Toggle item error:", err);
     }
@@ -188,9 +192,10 @@ export default function PenseBetePage() {
         items: updatedItems,
         total_items: updatedItems.length,
         checked_items: checkedCount,
+        updated_at: new Date().toISOString(),
       };
       setSelectedList(updatedList);
-      setLists(lists.map((l) => (l.id === selectedList.id ? updatedList : l)));
+      setLists(moveListToTop(lists, updatedList));
     } catch (err) {
       console.error("Delete item error:", err);
     }
@@ -207,9 +212,10 @@ export default function PenseBetePage() {
         ...selectedList,
         items: updatedItems,
         checked_items: updatedItems.length,
+        updated_at: new Date().toISOString(),
       };
       setSelectedList(updatedList);
-      setLists(lists.map((l) => (l.id === selectedList.id ? updatedList : l)));
+      setLists(moveListToTop(lists, updatedList));
     } catch (err) {
       console.error("Check all error:", err);
     }
@@ -226,9 +232,10 @@ export default function PenseBetePage() {
         ...selectedList,
         items: updatedItems,
         checked_items: 0,
+        updated_at: new Date().toISOString(),
       };
       setSelectedList(updatedList);
-      setLists(lists.map((l) => (l.id === selectedList.id ? updatedList : l)));
+      setLists(moveListToTop(lists, updatedList));
     } catch (err) {
       console.error("Uncheck all error:", err);
     }
@@ -237,6 +244,11 @@ export default function PenseBetePage() {
   const getProgress = (list: ShoppingList) => {
     if (list.total_items === 0) return 0;
     return Math.round((Number(list.checked_items) / Number(list.total_items)) * 100);
+  };
+
+  // Move a modified list to the top of the list (most recently used first)
+  const moveListToTop = (allLists: ShoppingList[], updatedList: ShoppingList) => {
+    return [updatedList, ...allLists.filter(l => l.id !== updatedList.id)];
   };
 
   if (loading) {
