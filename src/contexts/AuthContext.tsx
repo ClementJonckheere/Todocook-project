@@ -13,17 +13,31 @@ interface User {
   height: number | null;
   gender: string | null;
   activity_level: string | null;
+  sport_type: string | null;
   daily_calorie_goal: number;
   daily_protein_goal: number;
   daily_carbs_goal: number;
   daily_fat_goal: number;
 }
 
+interface RegisterData {
+  email: string;
+  password: string;
+  first_name: string;
+  last_name: string;
+  age?: number;
+  weight?: number;
+  height?: number;
+  gender?: string;
+  activity_level?: string;
+  sport_type?: string;
+}
+
 interface AuthContextType {
   user: User | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  register: (data: { email: string; password: string; first_name: string; last_name: string }) => Promise<{ success: boolean; error?: string }>;
+  register: (data: RegisterData) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }

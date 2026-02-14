@@ -20,6 +20,8 @@ async function initializeDatabase() {
     `);
 
     if (rows[0].exists) {
+      // Run migrations for existing databases
+      await runMigrations(client);
       initialized = true;
       return;
     }
@@ -36,6 +38,7 @@ async function initializeDatabase() {
         height DOUBLE PRECISION,
         gender TEXT,
         activity_level TEXT,
+        sport_type TEXT DEFAULT 'aucun',
         daily_calorie_goal INTEGER DEFAULT 2000,
         daily_protein_goal DOUBLE PRECISION DEFAULT 50,
         daily_carbs_goal DOUBLE PRECISION DEFAULT 250,
@@ -169,6 +172,22 @@ async function initializeDatabase() {
   } finally {
     client.release();
   }
+}
+
+// Run migrations for existing databases
+async function runMigrations(client: any) {
+  // Add sport_type column if it doesn't exist
+  await client.query(`
+    DO $$
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'users' AND column_name = 'sport_type'
+      ) THEN
+        ALTER TABLE users ADD COLUMN sport_type TEXT DEFAULT 'aucun';
+      END IF;
+    END $$;
+  `);
 }
 
 export async function getPool() {

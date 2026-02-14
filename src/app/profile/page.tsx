@@ -5,9 +5,20 @@ import { useRouter } from "next/navigation";
 import {
   User, TrendingUp, Plus, Save, ChevronDown, ChevronUp,
   Flame, Beef, Wheat, Droplet, Moon, Sun, Download, Upload, LogOut,
+  Calculator, RefreshCw,
 } from "lucide-react";
 import { apiUrl } from "@/lib/api";
 import { useTheme } from "@/contexts/ThemeContext";
+import {
+  ACTIVITY_LEVELS,
+  SPORT_TYPES,
+  calculateNutrition,
+  getSportTypeLabel,
+  getActivityLevelLabel,
+  type Gender,
+  type ActivityLevel,
+  type SportType,
+} from "@/lib/nutrition";
 
 interface UserData {
   id: number;
@@ -19,6 +30,7 @@ interface UserData {
   height: number | null;
   gender: string | null;
   activity_level: string | null;
+  sport_type: string | null;
   daily_calorie_goal: number;
   daily_protein_goal: number;
   daily_carbs_goal: number;
@@ -44,6 +56,7 @@ export default function ProfilePage() {
   const [form, setForm] = useState<Partial<UserData>>({});
   const [exporting, setExporting] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [recalculating, setRecalculating] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -55,6 +68,32 @@ export default function ProfilePage() {
       setLogs(Array.isArray(logsData) ? logsData : []);
     }).catch(() => {});
   }, []);
+
+  const canRecalculate = form.age && form.weight && form.height && form.gender && form.activity_level;
+
+  const recalculateGoals = () => {
+    if (!canRecalculate) return;
+
+    setRecalculating(true);
+    const result = calculateNutrition({
+      age: Number(form.age),
+      weight: Number(form.weight),
+      height: Number(form.height),
+      gender: form.gender as Gender,
+      activityLevel: form.activity_level as ActivityLevel,
+      sportType: (form.sport_type as SportType) || "aucun",
+    });
+
+    setForm({
+      ...form,
+      daily_calorie_goal: result.dailyCalories,
+      daily_protein_goal: result.dailyProtein,
+      daily_carbs_goal: result.dailyCarbs,
+      daily_fat_goal: result.dailyFat,
+    });
+
+    setTimeout(() => setRecalculating(false), 500);
+  };
 
   const saveProfile = async () => {
     try {
@@ -198,16 +237,41 @@ export default function ProfilePage() {
                       <select value={form.activity_level || ""} onChange={(e) => setForm({ ...form, activity_level: e.target.value })}
                         className="w-full border dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-3 py-2 text-sm">
                         <option value="">-</option>
-                        <option value="sedentaire">Sédentaire</option>
-                        <option value="leger">Léger</option>
-                        <option value="modere">Modéré</option>
-                        <option value="actif">Actif</option>
-                        <option value="tres_actif">Très actif</option>
+                        {ACTIVITY_LEVELS.map((level) => (
+                          <option key={level.value} value={level.value}>{level.label}</option>
+                        ))}
                       </select>
                     </div>
                   </div>
+                  <div>
+                    <label className="text-xs text-gray-500 dark:text-gray-400">Sport pratiqué</label>
+                    <select value={form.sport_type || "aucun"} onChange={(e) => setForm({ ...form, sport_type: e.target.value })}
+                      className="w-full border dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-3 py-2 text-sm">
+                      {SPORT_TYPES.map((sport) => (
+                        <option key={sport.value} value={sport.value}>{sport.label}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Nutritional Goals Section */}
                   <div className="border-t dark:border-gray-700 pt-3 mt-3">
-                    <p className="text-xs font-medium text-gray-600 dark:text-gray-300 mb-2">Objectifs journaliers</p>
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-xs font-medium text-gray-600 dark:text-gray-300">Objectifs journaliers</p>
+                      <button
+                        type="button"
+                        onClick={recalculateGoals}
+                        disabled={!canRecalculate || recalculating}
+                        className="flex items-center gap-1 text-xs text-primary-600 dark:text-primary-400 hover:text-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <RefreshCw size={12} className={recalculating ? "animate-spin" : ""} />
+                        Recalculer
+                      </button>
+                    </div>
+                    {canRecalculate && (
+                      <p className="text-[10px] text-gray-400 mb-2">
+                        Basé sur vos infos : formule Mifflin-St Jeor
+                      </p>
+                    )}
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label className="text-xs text-gray-500 dark:text-gray-400">Calories (kcal)</label>
@@ -254,8 +318,38 @@ export default function ProfilePage() {
                   </div>
                   <div className="grid grid-cols-2 gap-3 text-sm">
                     <div><span className="text-gray-500 dark:text-gray-400">Genre : </span><span className="font-medium capitalize dark:text-white">{user.gender || "-"}</span></div>
-                    <div><span className="text-gray-500 dark:text-gray-400">Activité : </span><span className="font-medium capitalize dark:text-white">{user.activity_level?.replace("_", " ") || "-"}</span></div>
+                    <div><span className="text-gray-500 dark:text-gray-400">Activité : </span><span className="font-medium capitalize dark:text-white">{user.activity_level ? getActivityLevelLabel(user.activity_level as ActivityLevel).split(" (")[0] : "-"}</span></div>
                   </div>
+                  {user.sport_type && user.sport_type !== "aucun" && (
+                    <div className="text-sm">
+                      <span className="text-gray-500 dark:text-gray-400">Sport : </span>
+                      <span className="font-medium dark:text-white">{getSportTypeLabel(user.sport_type as SportType)}</span>
+                    </div>
+                  )}
+
+                  {/* Display nutritional goals */}
+                  <div className="border-t dark:border-gray-700 pt-3 mt-3">
+                    <p className="text-xs font-medium text-gray-600 dark:text-gray-300 mb-2">Objectifs journaliers</p>
+                    <div className="grid grid-cols-4 gap-2 text-center">
+                      <div className="bg-orange-50 dark:bg-orange-900/20 rounded-lg p-2">
+                        <p className="text-sm font-bold text-orange-600 dark:text-orange-400">{user.daily_calorie_goal}</p>
+                        <p className="text-[10px] text-orange-400">kcal</p>
+                      </div>
+                      <div className="bg-red-50 dark:bg-red-900/20 rounded-lg p-2">
+                        <p className="text-sm font-bold text-red-600 dark:text-red-400">{user.daily_protein_goal}g</p>
+                        <p className="text-[10px] text-red-400">prot.</p>
+                      </div>
+                      <div className="bg-amber-50 dark:bg-amber-900/20 rounded-lg p-2">
+                        <p className="text-sm font-bold text-amber-600 dark:text-amber-400">{user.daily_carbs_goal}g</p>
+                        <p className="text-[10px] text-amber-400">gluc.</p>
+                      </div>
+                      <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-2">
+                        <p className="text-sm font-bold text-blue-600 dark:text-blue-400">{user.daily_fat_goal}g</p>
+                        <p className="text-[10px] text-blue-400">lip.</p>
+                      </div>
+                    </div>
+                  </div>
+
                   <button onClick={() => setEditing(true)} className="w-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 py-2 rounded-lg text-sm font-medium">Modifier</button>
                 </>
               )}
