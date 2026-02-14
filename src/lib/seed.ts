@@ -217,6 +217,232 @@ export async function seedDatabase() {
         { name: "Sel", quantity: 1, unit: "g" },
       ]
     },
+    // Light/Diet recipes
+    {
+      name: "Salade de poulet grillé",
+      description: "Salade fraîche et légère riche en protéines",
+      instructions: "1. Griller le poulet assaisonné\n2. Couper les tomates et le poivron\n3. Mélanger tous les légumes\n4. Ajouter le poulet tranché\n5. Assaisonner avec huile d'olive",
+      prepTime: 10, cookTime: 15, servings: 1, calories: 320, protein: 38, carbs: 12, fat: 14,
+      ingredients: [
+        { name: "Poulet (blanc)", quantity: 150, unit: "g" },
+        { name: "Tomate", quantity: 150, unit: "g" },
+        { name: "Poivron rouge", quantity: 100, unit: "g" },
+        { name: "Huile d'olive", quantity: 10, unit: "ml" },
+        { name: "Sel", quantity: 1, unit: "g" },
+      ]
+    },
+    {
+      name: "Courgettes farcies au thon",
+      description: "Courgettes légères farcies au thon et fromage",
+      instructions: "1. Évider les courgettes\n2. Mélanger le thon avec la crème fraîche\n3. Farcir les courgettes\n4. Gratiner avec le fromage\n5. Cuire 20 min à 180°C",
+      prepTime: 15, cookTime: 20, servings: 2, calories: 280, protein: 28, carbs: 8, fat: 15,
+      ingredients: [
+        { name: "Courgette", quantity: 400, unit: "g" },
+        { name: "Thon en boîte", quantity: 200, unit: "g" },
+        { name: "Crème fraîche", quantity: 30, unit: "g" },
+        { name: "Fromage râpé", quantity: 40, unit: "g" },
+        { name: "Sel", quantity: 2, unit: "g" },
+      ]
+    },
+    {
+      name: "Oeufs pochés aux légumes",
+      description: "Oeufs pochés sur lit de légumes sautés",
+      instructions: "1. Faire sauter les champignons et courgettes\n2. Pocher les oeufs dans l'eau frémissante\n3. Dresser les légumes sur assiette\n4. Déposer les oeufs pochés\n5. Assaisonner",
+      prepTime: 10, cookTime: 10, servings: 1, calories: 250, protein: 18, carbs: 8, fat: 16,
+      ingredients: [
+        { name: "Oeuf", quantity: 2, unit: "pièce" },
+        { name: "Champignon", quantity: 150, unit: "g" },
+        { name: "Courgette", quantity: 100, unit: "g" },
+        { name: "Beurre", quantity: 10, unit: "g" },
+        { name: "Sel", quantity: 1, unit: "g" },
+      ]
+    },
+    // High protein recipes
+    {
+      name: "Steak de thon et riz complet",
+      description: "Steak de thon riche en protéines avec accompagnement",
+      instructions: "1. Cuire le riz\n2. Saisir le thon 2 min de chaque côté\n3. L'intérieur doit rester rosé\n4. Servir avec le riz\n5. Arroser d'huile d'olive",
+      prepTime: 5, cookTime: 20, servings: 1, calories: 480, protein: 45, carbs: 40, fat: 14,
+      ingredients: [
+        { name: "Thon en boîte", quantity: 200, unit: "g" },
+        { name: "Riz blanc", quantity: 150, unit: "g" },
+        { name: "Huile d'olive", quantity: 10, unit: "ml" },
+        { name: "Sel", quantity: 2, unit: "g" },
+        { name: "Poivre", quantity: 1, unit: "g" },
+      ]
+    },
+    {
+      name: "Poulet protéiné aux oeufs",
+      description: "Bowl hyperprotéiné pour sportifs",
+      instructions: "1. Griller le poulet en tranches\n2. Cuire les oeufs brouillés\n3. Faire revenir les champignons\n4. Assembler dans un bol\n5. Assaisonner",
+      prepTime: 10, cookTime: 15, servings: 1, calories: 520, protein: 58, carbs: 6, fat: 30,
+      ingredients: [
+        { name: "Poulet (blanc)", quantity: 200, unit: "g" },
+        { name: "Oeuf", quantity: 3, unit: "pièce" },
+        { name: "Champignon", quantity: 100, unit: "g" },
+        { name: "Beurre", quantity: 15, unit: "g" },
+        { name: "Sel", quantity: 2, unit: "g" },
+      ]
+    },
+    {
+      name: "Saumon teriyaki",
+      description: "Pavé de saumon glacé à la sauce teriyaki maison",
+      instructions: "1. Préparer une sauce avec sucre et ail\n2. Poêler le saumon\n3. Glacer avec la sauce\n4. Servir avec du riz\n5. Saupoudrer de sel",
+      prepTime: 10, cookTime: 15, servings: 2, calories: 480, protein: 36, carbs: 48, fat: 16,
+      ingredients: [
+        { name: "Saumon", quantity: 300, unit: "g" },
+        { name: "Riz blanc", quantity: 200, unit: "g" },
+        { name: "Sucre", quantity: 20, unit: "g" },
+        { name: "Ail", quantity: 5, unit: "g" },
+        { name: "Sel", quantity: 2, unit: "g" },
+      ]
+    },
+    // Quick recipes
+    {
+      name: "Pâtes à l'ail et huile d'olive",
+      description: "Aglio e olio - recette italienne express",
+      instructions: "1. Cuire les pâtes al dente\n2. Faire revenir l'ail émincé dans l'huile\n3. Attention à ne pas brûler l'ail\n4. Mélanger avec les pâtes\n5. Poivrer généreusement",
+      prepTime: 5, cookTime: 12, servings: 2, calories: 420, protein: 12, carbs: 58, fat: 16,
+      ingredients: [
+        { name: "Pâtes", quantity: 250, unit: "g" },
+        { name: "Ail", quantity: 15, unit: "g" },
+        { name: "Huile d'olive", quantity: 30, unit: "ml" },
+        { name: "Poivre", quantity: 2, unit: "g" },
+        { name: "Sel", quantity: 3, unit: "g" },
+      ]
+    },
+    {
+      name: "Omelette express",
+      description: "Omelette simple et rapide pour repas pressé",
+      instructions: "1. Battre les oeufs avec sel et poivre\n2. Faire fondre le beurre\n3. Verser les oeufs\n4. Cuire à feu moyen\n5. Plier et servir",
+      prepTime: 2, cookTime: 5, servings: 1, calories: 280, protein: 18, carbs: 2, fat: 22,
+      ingredients: [
+        { name: "Oeuf", quantity: 3, unit: "pièce" },
+        { name: "Beurre", quantity: 15, unit: "g" },
+        { name: "Sel", quantity: 1, unit: "g" },
+        { name: "Poivre", quantity: 1, unit: "g" },
+      ]
+    },
+    {
+      name: "Toast avocat-oeuf",
+      description: "Toast healthy pour petit-déjeuner ou brunch",
+      instructions: "1. Toaster le pain\n2. Écraser l'avocat avec une fourchette\n3. Tartiner sur le pain\n4. Ajouter l'oeuf poché ou au plat\n5. Saler et poivrer",
+      prepTime: 5, cookTime: 5, servings: 1, calories: 350, protein: 14, carbs: 28, fat: 22,
+      ingredients: [
+        { name: "Pain", quantity: 60, unit: "g" },
+        { name: "Oeuf", quantity: 1, unit: "pièce" },
+        { name: "Huile d'olive", quantity: 5, unit: "ml" },
+        { name: "Sel", quantity: 1, unit: "g" },
+        { name: "Poivre", quantity: 1, unit: "g" },
+      ]
+    },
+    // Hearty/Comfort food recipes
+    {
+      name: "Gratin dauphinois",
+      description: "Le classique gratin de pommes de terre à la crème",
+      instructions: "1. Éplucher et trancher les pommes de terre\n2. Mélanger crème et lait\n3. Disposer en couches dans un plat\n4. Verser le mélange crémeux\n5. Cuire 1h à 180°C",
+      prepTime: 20, cookTime: 60, servings: 6, calories: 320, protein: 8, carbs: 35, fat: 18,
+      ingredients: [
+        { name: "Pomme de terre", quantity: 1000, unit: "g" },
+        { name: "Crème fraîche", quantity: 200, unit: "g" },
+        { name: "Lait", quantity: 200, unit: "ml" },
+        { name: "Beurre", quantity: 30, unit: "g" },
+        { name: "Sel", quantity: 5, unit: "g" },
+      ]
+    },
+    {
+      name: "Risotto aux champignons",
+      description: "Risotto crémeux aux champignons de Paris",
+      instructions: "1. Faire revenir l'oignon et l'ail\n2. Ajouter le riz et nacrer\n3. Mouiller progressivement\n4. Ajouter les champignons\n5. Finir avec beurre et fromage",
+      prepTime: 10, cookTime: 25, servings: 2, calories: 450, protein: 14, carbs: 55, fat: 20,
+      ingredients: [
+        { name: "Riz blanc", quantity: 200, unit: "g" },
+        { name: "Champignon", quantity: 200, unit: "g" },
+        { name: "Oignon", quantity: 80, unit: "g" },
+        { name: "Beurre", quantity: 30, unit: "g" },
+        { name: "Fromage râpé", quantity: 50, unit: "g" },
+      ]
+    },
+    {
+      name: "Hachis parmentier",
+      description: "Gratin de viande hachée et purée de pommes de terre",
+      instructions: "1. Préparer une purée de pommes de terre\n2. Faire revenir l'oignon\n3. Ajouter les lardons et faire revenir\n4. Superposer viande et purée\n5. Gratiner au four 20 min",
+      prepTime: 20, cookTime: 35, servings: 4, calories: 480, protein: 22, carbs: 38, fat: 26,
+      ingredients: [
+        { name: "Pomme de terre", quantity: 600, unit: "g" },
+        { name: "Lardons", quantity: 200, unit: "g" },
+        { name: "Oignon", quantity: 100, unit: "g" },
+        { name: "Beurre", quantity: 40, unit: "g" },
+        { name: "Fromage râpé", quantity: 80, unit: "g" },
+      ]
+    },
+    // Vegetarian options
+    {
+      name: "Poêlée de légumes",
+      description: "Mélange coloré de légumes sautés",
+      instructions: "1. Couper tous les légumes en morceaux\n2. Chauffer l'huile dans une poêle\n3. Faire sauter les légumes à feu vif\n4. Assaisonner\n5. Servir chaud",
+      prepTime: 15, cookTime: 15, servings: 2, calories: 180, protein: 5, carbs: 20, fat: 10,
+      ingredients: [
+        { name: "Courgette", quantity: 200, unit: "g" },
+        { name: "Poivron rouge", quantity: 150, unit: "g" },
+        { name: "Carotte", quantity: 100, unit: "g" },
+        { name: "Oignon", quantity: 80, unit: "g" },
+        { name: "Huile d'olive", quantity: 20, unit: "ml" },
+      ]
+    },
+    {
+      name: "Pâtes aux légumes",
+      description: "Pâtes végétariennes aux légumes du jardin",
+      instructions: "1. Cuire les pâtes\n2. Faire revenir les légumes\n3. Mélanger pâtes et légumes\n4. Ajouter un filet d'huile d'olive\n5. Saupoudrer de fromage râpé",
+      prepTime: 10, cookTime: 20, servings: 2, calories: 380, protein: 14, carbs: 58, fat: 12,
+      ingredients: [
+        { name: "Pâtes", quantity: 250, unit: "g" },
+        { name: "Courgette", quantity: 150, unit: "g" },
+        { name: "Tomate", quantity: 150, unit: "g" },
+        { name: "Huile d'olive", quantity: 15, unit: "ml" },
+        { name: "Fromage râpé", quantity: 30, unit: "g" },
+      ]
+    },
+    {
+      name: "Oeufs à la florentine",
+      description: "Oeufs pochés sur un lit d'épinards crémeux",
+      instructions: "1. Faire revenir l'ail dans le beurre\n2. Ajouter les champignons (comme épinards)\n3. Incorporer la crème fraîche\n4. Pocher les oeufs\n5. Dresser les oeufs sur les légumes",
+      prepTime: 10, cookTime: 15, servings: 2, calories: 320, protein: 18, carbs: 8, fat: 25,
+      ingredients: [
+        { name: "Oeuf", quantity: 4, unit: "pièce" },
+        { name: "Champignon", quantity: 200, unit: "g" },
+        { name: "Crème fraîche", quantity: 60, unit: "g" },
+        { name: "Beurre", quantity: 20, unit: "g" },
+        { name: "Ail", quantity: 5, unit: "g" },
+      ]
+    },
+    // Fish recipes
+    {
+      name: "Papillote de saumon",
+      description: "Saumon cuit en papillote avec légumes",
+      instructions: "1. Préparer des feuilles de papier cuisson\n2. Disposer le saumon et les légumes\n3. Assaisonner\n4. Fermer les papillotes\n5. Cuire 20 min à 200°C",
+      prepTime: 10, cookTime: 20, servings: 2, calories: 380, protein: 32, carbs: 12, fat: 22,
+      ingredients: [
+        { name: "Saumon", quantity: 300, unit: "g" },
+        { name: "Courgette", quantity: 150, unit: "g" },
+        { name: "Carotte", quantity: 100, unit: "g" },
+        { name: "Huile d'olive", quantity: 15, unit: "ml" },
+        { name: "Sel", quantity: 2, unit: "g" },
+      ]
+    },
+    {
+      name: "Fish and chips maison",
+      description: "Poisson pané croustillant avec frites",
+      instructions: "1. Préparer les frites de pommes de terre\n2. Paner le poisson (farine, oeuf)\n3. Frire les frites\n4. Frire le poisson\n5. Servir avec sel",
+      prepTime: 20, cookTime: 25, servings: 2, calories: 580, protein: 28, carbs: 55, fat: 28,
+      ingredients: [
+        { name: "Saumon", quantity: 250, unit: "g" },
+        { name: "Pomme de terre", quantity: 400, unit: "g" },
+        { name: "Farine", quantity: 50, unit: "g" },
+        { name: "Oeuf", quantity: 1, unit: "pièce" },
+        { name: "Huile d'olive", quantity: 50, unit: "ml" },
+      ]
+    },
   ];
 
   for (const recipe of recipes) {
