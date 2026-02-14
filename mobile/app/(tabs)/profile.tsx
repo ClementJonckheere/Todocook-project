@@ -337,6 +337,39 @@ export default function ProfileScreen() {
           </View>
         )}
 
+        {/* Nutrition advice - personalized recommendations */}
+        {user && user.daily_calorie_goal > 0 && (
+          <View style={s.adviceCard}>
+            <View style={s.adviceHeader}>
+              <Ionicons name="bulb-outline" size={20} color={colors.accent[600]} />
+              <Text style={s.adviceTitle}>Conseils nutrition</Text>
+            </View>
+            <Text style={s.adviceSubtitle}>Basé sur votre profil, vos besoins journaliers estimés :</Text>
+            <View style={s.adviceGrid}>
+              <View style={s.adviceItem}>
+                <Ionicons name="flame" size={20} color={colors.accent[500]} />
+                <Text style={s.adviceValue}>{user.daily_calorie_goal}</Text>
+                <Text style={s.adviceLabel}>kcal</Text>
+              </View>
+              <View style={s.adviceItem}>
+                <Ionicons name="fitness" size={20} color={colors.red[500]} />
+                <Text style={s.adviceValue}>{user.daily_protein_goal}g</Text>
+                <Text style={s.adviceLabel}>Protéines</Text>
+              </View>
+              <View style={s.adviceItem}>
+                <Ionicons name="leaf" size={20} color={colors.amber[600]} />
+                <Text style={s.adviceValue}>{user.daily_carbs_goal}g</Text>
+                <Text style={s.adviceLabel}>Glucides</Text>
+              </View>
+              <View style={s.adviceItem}>
+                <Ionicons name="water" size={20} color={colors.blue[600]} />
+                <Text style={s.adviceValue}>{user.daily_fat_goal}g</Text>
+                <Text style={s.adviceLabel}>Lipides</Text>
+              </View>
+            </View>
+          </View>
+        )}
+
         {/* Nutrition stats */}
         <View style={s.section}>
           <View style={s.sectionHeader}>
@@ -451,4 +484,12 @@ const s = StyleSheet.create({
   logoutText: { color: colors.red[500], fontSize: 15, fontWeight: "600" },
   recalcBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 12, marginTop: 8, backgroundColor: colors.accent[50], borderRadius: 10, borderWidth: 1, borderColor: colors.accent[200] },
   recalcText: { color: colors.accent[600], fontSize: 13, fontWeight: "600" },
+  adviceCard: { marginHorizontal: 20, marginTop: 16, backgroundColor: colors.accent[50], borderRadius: 14, padding: 16, borderWidth: 1, borderColor: colors.accent[200] },
+  adviceHeader: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 },
+  adviceTitle: { fontSize: 15, fontWeight: "700", color: colors.accent[700] },
+  adviceSubtitle: { fontSize: 12, color: colors.gray[600], marginBottom: 12 },
+  adviceGrid: { flexDirection: "row", justifyContent: "space-around" },
+  adviceItem: { alignItems: "center" },
+  adviceValue: { fontSize: 18, fontWeight: "bold", color: colors.gray[900], marginTop: 4 },
+  adviceLabel: { fontSize: 10, color: colors.gray[500], marginTop: 2 },
 });
