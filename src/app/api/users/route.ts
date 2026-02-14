@@ -3,6 +3,7 @@ import { query } from "@/lib/db";
 import { seedDatabase } from "@/lib/seed";
 import { getAuthUser } from "@/lib/auth";
 import { validateMaxLength, validatePositiveNumber } from "@/lib/validation";
+import { calculateNutrition, type Gender, type ActivityLevel, type SportType } from "@/lib/nutrition";
 
 export const dynamic = "force-dynamic";
 
@@ -29,9 +30,9 @@ export async function PUT(request: Request) {
     const authUser = await getAuthUser();
     const userId = authUser?.id || 1;
     const body = await request.json();
-    const {
+    let {
       first_name, last_name, age, weight, height,
-      gender, activity_level,
+      gender, activity_level, sport_type,
       daily_calorie_goal, daily_protein_goal, daily_carbs_goal, daily_fat_goal,
     } = body;
 
@@ -49,6 +50,26 @@ export async function PUT(request: Request) {
       return NextResponse.json({ errors }, { status: 400 });
     }
 
+    // Auto-calculate nutrition goals if personal info is complete
+    // Always recalculate when personal info is provided (unless explicit goals are passed)
+    const hasCompletePersonalInfo = age && weight && height && gender && activity_level;
+
+    if (hasCompletePersonalInfo) {
+      const nutrition = calculateNutrition({
+        age: Number(age),
+        weight: Number(weight),
+        height: Number(height),
+        gender: gender as Gender,
+        activityLevel: activity_level as ActivityLevel,
+        sportType: (sport_type as SportType) || "aucun",
+      });
+      // Use calculated values if not explicitly provided
+      if (!daily_calorie_goal) daily_calorie_goal = nutrition.dailyCalories;
+      if (!daily_protein_goal) daily_protein_goal = nutrition.dailyProtein;
+      if (!daily_carbs_goal) daily_carbs_goal = nutrition.dailyCarbs;
+      if (!daily_fat_goal) daily_fat_goal = nutrition.dailyFat;
+    }
+
     await query(
       `UPDATE users SET
         first_name = COALESCE($1, first_name),
@@ -58,13 +79,14 @@ export async function PUT(request: Request) {
         height = COALESCE($5, height),
         gender = COALESCE($6, gender),
         activity_level = COALESCE($7, activity_level),
-        daily_calorie_goal = COALESCE($8, daily_calorie_goal),
-        daily_protein_goal = COALESCE($9, daily_protein_goal),
-        daily_carbs_goal = COALESCE($10, daily_carbs_goal),
-        daily_fat_goal = COALESCE($11, daily_fat_goal),
+        sport_type = COALESCE($8, sport_type),
+        daily_calorie_goal = COALESCE($9, daily_calorie_goal),
+        daily_protein_goal = COALESCE($10, daily_protein_goal),
+        daily_carbs_goal = COALESCE($11, daily_carbs_goal),
+        daily_fat_goal = COALESCE($12, daily_fat_goal),
         updated_at = NOW()
-      WHERE id = $12`,
-      [first_name, last_name, age, weight, height, gender, activity_level, daily_calorie_goal, daily_protein_goal, daily_carbs_goal, daily_fat_goal, userId]
+      WHERE id = $13`,
+      [first_name, last_name, age, weight, height, gender, activity_level, sport_type, daily_calorie_goal, daily_protein_goal, daily_carbs_goal, daily_fat_goal, userId]
     );
 
     const { rows } = await query("SELECT * FROM users WHERE id = $1", [userId]);
