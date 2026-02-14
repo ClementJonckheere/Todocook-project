@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { format } from "date-fns";
 import { apiUrl } from "../../src/lib/api";
 import { colors } from "../../src/theme/colors";
 import { calculateNutrition, type Gender, type ActivityLevel, type SportType } from "../../src/lib/nutrition";
@@ -48,6 +49,7 @@ export default function ProfileScreen() {
   const [showInfo, setShowInfo] = useState(false);
   const [form, setForm] = useState({ age: "", weight: "", height: "", gender: "", activity_level: "", sport_type: "aucun" });
   const [recalculating, setRecalculating] = useState(false);
+  const [todayCalories, setTodayCalories] = useState(0);
 
   useEffect(() => {
     loadData();
@@ -55,14 +57,19 @@ export default function ProfileScreen() {
 
   const loadData = async () => {
     try {
-      const [userRes, logsRes] = await Promise.all([
+      const today = format(new Date(), "yyyy-MM-dd");
+      const [userRes, logsRes, mealsRes] = await Promise.all([
         fetch(apiUrl("/api/users")),
         fetch(apiUrl("/api/daily-logs?days=30")),
+        fetch(apiUrl(`/api/meal-plans?userId=1&startDate=${today}&endDate=${today}`)),
       ]);
       const userData = await userRes.json();
       const logsData = await logsRes.json();
+      const mealsData = await mealsRes.json();
       setUser(userData);
       setLogs(logsData);
+      const mealsArray = Array.isArray(mealsData) ? mealsData : [];
+      setTodayCalories(mealsArray.reduce((sum: number, m: { calories?: number }) => sum + (m.calories || 0), 0));
       setForm({
         age: String(userData.age || ""),
         weight: String(userData.weight || ""),
@@ -367,6 +374,28 @@ export default function ProfileScreen() {
                 <Text style={s.adviceLabel}>Lipides</Text>
               </View>
             </View>
+            {/* Today's calorie progress */}
+            <View style={s.progressSection}>
+              <View style={s.progressHeader}>
+                <Text style={s.progressLabel}>Aujourd'hui</Text>
+                <Text style={s.progressValue}>{todayCalories} / {user.daily_calorie_goal} kcal</Text>
+              </View>
+              <View style={s.progressBg}>
+                <View
+                  style={[
+                    s.progressBar,
+                    {
+                      width: `${Math.min((todayCalories / user.daily_calorie_goal) * 100, 100)}%`,
+                      backgroundColor: todayCalories < user.daily_calorie_goal * 0.7
+                        ? colors.primary[500]
+                        : todayCalories < user.daily_calorie_goal * 0.9
+                        ? colors.accent[500]
+                        : colors.red[500],
+                    },
+                  ]}
+                />
+              </View>
+            </View>
           </View>
         )}
 
@@ -492,4 +521,10 @@ const s = StyleSheet.create({
   adviceItem: { alignItems: "center" },
   adviceValue: { fontSize: 18, fontWeight: "bold", color: colors.gray[900], marginTop: 4 },
   adviceLabel: { fontSize: 10, color: colors.gray[500], marginTop: 2 },
+  progressSection: { marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: colors.accent[200] },
+  progressHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 },
+  progressLabel: { fontSize: 13, fontWeight: "600", color: colors.gray[700] },
+  progressValue: { fontSize: 13, fontWeight: "700", color: colors.gray[900] },
+  progressBg: { height: 10, backgroundColor: colors.white, borderRadius: 5, overflow: "hidden" },
+  progressBar: { height: 10, borderRadius: 5 },
 });
