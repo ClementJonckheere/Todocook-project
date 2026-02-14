@@ -13,6 +13,7 @@ import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { apiUrl } from "../../src/lib/api";
 import { colors } from "../../src/theme/colors";
+import { calculateNutrition, type Gender, type ActivityLevel, type SportType } from "../../src/lib/nutrition";
 
 interface User {
   id: number;
@@ -24,6 +25,7 @@ interface User {
   height: number;
   gender: string;
   activity_level: string;
+  sport_type: string;
   daily_calorie_goal: number;
   daily_protein_goal: number;
   daily_carbs_goal: number;
@@ -44,7 +46,8 @@ export default function ProfileScreen() {
   const [logs, setLogs] = useState<DailyLog[]>([]);
   const [editing, setEditing] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
-  const [form, setForm] = useState({ age: "", weight: "", height: "", gender: "", activity_level: "" });
+  const [form, setForm] = useState({ age: "", weight: "", height: "", gender: "", activity_level: "", sport_type: "aucun" });
+  const [recalculating, setRecalculating] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -66,6 +69,7 @@ export default function ProfileScreen() {
         height: String(userData.height || ""),
         gender: userData.gender || "",
         activity_level: userData.activity_level || "",
+        sport_type: userData.sport_type || "aucun",
       });
     } catch {
       // API not reachable
@@ -84,6 +88,7 @@ export default function ProfileScreen() {
           height: parseInt(form.height) || null,
           gender: form.gender || null,
           activity_level: form.activity_level || null,
+          sport_type: form.sport_type || "aucun",
         }),
       });
       setEditing(false);
@@ -91,6 +96,56 @@ export default function ProfileScreen() {
     } catch {
       Alert.alert("Erreur", "Impossible de sauvegarder.");
     }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await fetch(apiUrl("/api/auth/logout"), { method: "POST" });
+      router.replace("/login");
+    } catch {
+      router.replace("/login");
+    }
+  };
+
+  const canRecalculate = form.age && form.weight && form.height && form.gender && form.activity_level;
+
+  const recalculateGoals = async () => {
+    if (!canRecalculate) return;
+
+    setRecalculating(true);
+    const result = calculateNutrition({
+      age: parseInt(form.age),
+      weight: parseFloat(form.weight),
+      height: parseFloat(form.height),
+      gender: form.gender as Gender,
+      activityLevel: form.activity_level as ActivityLevel,
+      sportType: (form.sport_type as SportType) || "aucun",
+    });
+
+    try {
+      await fetch(apiUrl("/api/users"), {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: 1,
+          age: parseInt(form.age) || null,
+          weight: parseFloat(form.weight) || null,
+          height: parseInt(form.height) || null,
+          gender: form.gender || null,
+          activity_level: form.activity_level || null,
+          sport_type: form.sport_type || "aucun",
+          daily_calorie_goal: result.dailyCalories,
+          daily_protein_goal: result.dailyProtein,
+          daily_carbs_goal: result.dailyCarbs,
+          daily_fat_goal: result.dailyFat,
+        }),
+      });
+      setEditing(false);
+      loadData();
+    } catch {
+      Alert.alert("Erreur", "Impossible de recalculer.");
+    }
+    setRecalculating(false);
   };
 
   // Nutrition averages
@@ -173,6 +228,69 @@ export default function ProfileScreen() {
                     ))}
                   </View>
                 </View>
+                <View style={s.formRow}>
+                  <Text style={s.formLabel}>Niveau d'activité</Text>
+                  <View style={s.activityRow}>
+                    {[
+                      { value: "sedentaire", label: "Sédentaire" },
+                      { value: "leger", label: "Léger" },
+                      { value: "modere", label: "Modéré" },
+                      { value: "actif", label: "Actif" },
+                      { value: "tres_actif", label: "Très actif" },
+                    ].map((level) => (
+                      <TouchableOpacity
+                        key={level.value}
+                        style={[s.activityBtn, form.activity_level === level.value && s.activityBtnActive]}
+                        onPress={() => setForm({ ...form, activity_level: level.value })}
+                      >
+                        <Text style={[s.activityText, form.activity_level === level.value && { color: colors.white }]}>
+                          {level.label}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+                <View style={s.formRow}>
+                  <Text style={s.formLabel}>Sport pratiqué</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.sportScroll}>
+                    {[
+                      { value: "aucun", label: "Aucun" },
+                      { value: "musculation", label: "Musculation" },
+                      { value: "course_a_pied", label: "Course" },
+                      { value: "natation", label: "Natation" },
+                      { value: "cyclisme", label: "Cyclisme" },
+                      { value: "football", label: "Football" },
+                      { value: "basketball", label: "Basketball" },
+                      { value: "tennis", label: "Tennis" },
+                      { value: "boxe", label: "Boxe" },
+                      { value: "crossfit", label: "CrossFit" },
+                      { value: "yoga", label: "Yoga" },
+                      { value: "autre", label: "Autre" },
+                    ].map((sport) => (
+                      <TouchableOpacity
+                        key={sport.value}
+                        style={[s.sportBtn, form.sport_type === sport.value && s.sportBtnActive]}
+                        onPress={() => setForm({ ...form, sport_type: sport.value })}
+                      >
+                        <Text style={[s.sportText, form.sport_type === sport.value && { color: colors.white }]}>
+                          {sport.label}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+                {canRecalculate && (
+                  <TouchableOpacity
+                    style={[s.recalcBtn, recalculating && { opacity: 0.5 }]}
+                    onPress={recalculateGoals}
+                    disabled={recalculating}
+                  >
+                    <Ionicons name="calculator-outline" size={16} color={colors.accent[600]} />
+                    <Text style={s.recalcText}>
+                      {recalculating ? "Calcul..." : "Recalculer les besoins nutritionnels"}
+                    </Text>
+                  </TouchableOpacity>
+                )}
                 <View style={s.editActions}>
                   <TouchableOpacity style={s.cancelBtn} onPress={() => setEditing(false)}>
                     <Text style={s.cancelText}>Annuler</Text>
@@ -200,6 +318,16 @@ export default function ProfileScreen() {
                   <Text style={s.infoLabel}>Sexe</Text>
                   <Text style={s.infoValue}>{user?.gender || "-"}</Text>
                 </View>
+                <View style={s.infoRow}>
+                  <Text style={s.infoLabel}>Activité</Text>
+                  <Text style={s.infoValue}>{user?.activity_level || "-"}</Text>
+                </View>
+                {user?.sport_type && user.sport_type !== "aucun" && (
+                  <View style={s.infoRow}>
+                    <Text style={s.infoLabel}>Sport</Text>
+                    <Text style={s.infoValue}>{user.sport_type}</Text>
+                  </View>
+                )}
                 <TouchableOpacity style={s.editBtn} onPress={() => setEditing(true)}>
                   <Ionicons name="create-outline" size={16} color={colors.primary[600]} />
                   <Text style={s.editText}>Modifier</Text>
@@ -261,6 +389,12 @@ export default function ProfileScreen() {
           <Text style={s.createText}>Créer une recette</Text>
         </TouchableOpacity>
 
+        {/* Logout button */}
+        <TouchableOpacity style={s.logoutBtn} onPress={handleLogout}>
+          <Ionicons name="log-out-outline" size={20} color={colors.red[500]} />
+          <Text style={s.logoutText}>Se déconnecter</Text>
+        </TouchableOpacity>
+
         <View style={{ height: 24 }} />
       </ScrollView>
     </SafeAreaView>
@@ -305,4 +439,16 @@ const s = StyleSheet.create({
   bar: { width: 12, borderRadius: 4 },
   createBtn: { marginHorizontal: 20, marginTop: 20, backgroundColor: colors.primary[500], borderRadius: 14, paddingVertical: 16, flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 8, shadowColor: colors.primary[500], shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },
   createText: { color: colors.white, fontSize: 16, fontWeight: "700" },
+  activityRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  activityBtn: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8, borderWidth: 1, borderColor: colors.gray[200], backgroundColor: colors.white },
+  activityBtnActive: { backgroundColor: colors.primary[500], borderColor: colors.primary[500] },
+  activityText: { fontSize: 12, fontWeight: "500", color: colors.gray[600] },
+  sportScroll: { flexDirection: "row" },
+  sportBtn: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 8, borderWidth: 1, borderColor: colors.gray[200], backgroundColor: colors.white, marginRight: 8 },
+  sportBtnActive: { backgroundColor: colors.accent[500], borderColor: colors.accent[500] },
+  sportText: { fontSize: 12, fontWeight: "500", color: colors.gray[600] },
+  logoutBtn: { marginHorizontal: 20, marginTop: 16, backgroundColor: colors.red[50], borderRadius: 14, paddingVertical: 14, flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 8, borderWidth: 1, borderColor: colors.red[200] },
+  logoutText: { color: colors.red[500], fontSize: 15, fontWeight: "600" },
+  recalcBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 12, marginTop: 8, backgroundColor: colors.accent[50], borderRadius: 10, borderWidth: 1, borderColor: colors.accent[200] },
+  recalcText: { color: colors.accent[600], fontSize: 13, fontWeight: "600" },
 });
