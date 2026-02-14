@@ -51,7 +51,6 @@ const mealTypes = [
 export default function DashboardScreen() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
-  const [todayCalories, setTodayCalories] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<Recipe[]>([]);
   const [showSearch, setShowSearch] = useState(false);
@@ -84,7 +83,6 @@ export default function DashboardScreen() {
       }
       const mealsArray = Array.isArray(mealsData) ? mealsData : [];
       setTodayMeals(mealsArray);
-      setTodayCalories(mealsArray.reduce((sum: number, m: MealPlan) => sum + (m.calories || 0), 0));
 
       const monday = startOfWeek(new Date(), { weekStartsOn: 1 });
       const weekRes = await fetch(
@@ -147,9 +145,6 @@ export default function DashboardScreen() {
     }
   };
 
-  const caloriePercent = user ? Math.min((todayCalories / user.daily_calorie_goal) * 100, 100) : 0;
-  const barColor = caloriePercent < 70 ? colors.primary[500] : caloriePercent < 90 ? colors.accent[500] : colors.red[500];
-
   const monday = startOfWeek(new Date(), { weekStartsOn: 1 });
   const days = Array.from({ length: 7 }, (_, i) => addDays(monday, i));
 
@@ -165,17 +160,6 @@ export default function DashboardScreen() {
           <TouchableOpacity onPress={() => setShowSearch(!showSearch)} style={s.searchBtn}>
             <Ionicons name="search" size={22} color={colors.gray[600]} />
           </TouchableOpacity>
-        </View>
-
-        {/* Calorie Bar */}
-        <View style={s.calorieCard}>
-          <View style={s.calorieRow}>
-            <Ionicons name="flame" size={20} color={colors.accent[500]} />
-            <Text style={s.calorieText}>{todayCalories} / {user?.daily_calorie_goal || 2000} kcal</Text>
-          </View>
-          <View style={s.progressBg}>
-            <View style={[s.progressBar, { width: `${caloriePercent}%`, backgroundColor: barColor }]} />
-          </View>
         </View>
 
         {/* Quick Actions */}
