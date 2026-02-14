@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/lib/db";
-import { getAuthUser } from "@/lib/auth";
+import { getAuthUser, UNAUTHENTICATED_RESPONSE } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   try {
     const authUser = await getAuthUser();
-    const userId = authUser?.id || 1;
+    if (!authUser) return NextResponse.json(UNAUTHENTICATED_RESPONSE, { status: 401 });
+    const userId = authUser.id;
 
     const { rows } = await query(
       `SELECT pi.*, i.name, i.calories, i.protein, i.carbs, i.fat, i.category, i.image_url, i.barcode
@@ -28,7 +29,8 @@ export async function GET(request: NextRequest) {
 export async function POST(request: Request) {
   try {
     const authUser = await getAuthUser();
-    const userId = authUser?.id || 1;
+    if (!authUser) return NextResponse.json(UNAUTHENTICATED_RESPONSE, { status: 401 });
+    const userId = authUser.id;
     const body = await request.json();
     const { ingredient_id, quantity, unit } = body;
 
@@ -62,6 +64,9 @@ export async function POST(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
+    const authUser = await getAuthUser();
+    if (!authUser) return NextResponse.json(UNAUTHENTICATED_RESPONSE, { status: 401 });
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
 
@@ -69,7 +74,10 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: "id est requis" }, { status: 400 });
     }
 
-    await query("DELETE FROM pantry_items WHERE id = $1", [id]);
+    const result = await query("DELETE FROM pantry_items WHERE id = $1 AND user_id = $2", [id, authUser.id]);
+    if (result.rowCount === 0) {
+      return NextResponse.json({ error: "Article non trouvé" }, { status: 404 });
+    }
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("DELETE /api/pantry error:", error);

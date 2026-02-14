@@ -79,3 +79,5 @@ export async function requireAuth(): Promise<{ id: number; email: string; first_
   if (!user) throw new Error("Non authentifié");
   return user;
 }
+
+export const UNAUTHENTICATED_RESPONSE = { error: "Non authentifié" } as const;

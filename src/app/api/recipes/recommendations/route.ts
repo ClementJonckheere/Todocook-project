@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/lib/db";
-import { getAuthUser } from "@/lib/auth";
+import { getAuthUser, UNAUTHENTICATED_RESPONSE } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -50,15 +50,16 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const authUser = await getAuthUser();
-    const userId = authUser?.id || 1;
+    if (!authUser) return NextResponse.json(UNAUTHENTICATED_RESPONSE, { status: 401 });
+    const userId = authUser.id;
 
-    // Parse query parameters
-    const maxMissing = parseInt(searchParams.get("maxMissing") || "3");
+    // Parse and validate query parameters
+    const maxMissing = Math.min(Math.max(parseInt(searchParams.get("maxMissing") || "3") || 0, 0), 20);
     const mealType = searchParams.get("mealType") as "light" | "balanced" | "hearty" | null;
-    const targetCalories = searchParams.get("targetCalories") ? parseInt(searchParams.get("targetCalories")!) : null;
+    const targetCalories = searchParams.get("targetCalories") ? Math.max(parseInt(searchParams.get("targetCalories")!) || 0, 0) : null;
     const highProtein = searchParams.get("highProtein") === "true";
-    const offset = parseInt(searchParams.get("offset") || "0");
-    const limit = parseInt(searchParams.get("limit") || "10");
+    const offset = Math.max(parseInt(searchParams.get("offset") || "0") || 0, 0);
+    const limit = Math.min(Math.max(parseInt(searchParams.get("limit") || "10") || 10, 1), 100);
 
     // Get user's nutritional goals
     const { rows: userRows } = await query(
@@ -209,14 +210,22 @@ export async function GET(request: NextRequest) {
     const total = scoredRecipes.length;
     const paginatedRecipes = scoredRecipes.slice(offset, offset + limit);
 
-    // Enrich with missing ingredient names
-    for (const recipe of paginatedRecipes) {
-      const missingNames: string[] = [];
-      for (const id of recipe.missing_ingredient_ids) {
-        const { rows } = await query("SELECT name FROM ingredients WHERE id = $1", [id]);
-        missingNames.push(rows[0]?.name || "Inconnu");
+    // Batch-fetch all missing ingredient names in a single query
+    const allMissingIds = Array.from(new Set(paginatedRecipes.flatMap(r => r.missing_ingredient_ids)));
+    const ingredientNameMap = new Map<number, string>();
+    if (allMissingIds.length > 0) {
+      const { rows: ingredientRows } = await query(
+        "SELECT id, name FROM ingredients WHERE id = ANY($1)",
+        [allMissingIds]
+      );
+      for (const row of ingredientRows) {
+        ingredientNameMap.set(row.id, row.name);
       }
-      recipe.missing_ingredient_names = missingNames;
+    }
+    for (const recipe of paginatedRecipes) {
+      recipe.missing_ingredient_names = recipe.missing_ingredient_ids.map(
+        (id: number) => ingredientNameMap.get(id) || "Inconnu"
+      );
     }
 
     // Calculate summary stats

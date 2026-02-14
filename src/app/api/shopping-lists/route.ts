@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/lib/db";
-import { getAuthUser } from "@/lib/auth";
+import { getAuthUser, UNAUTHENTICATED_RESPONSE } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -9,7 +9,8 @@ export async function GET(request: NextRequest) {
   try {
     const authUser = await getAuthUser();
     const { searchParams } = new URL(request.url);
-    const userId = authUser?.id || searchParams.get("userId") || "1";
+    if (!authUser) return NextResponse.json(UNAUTHENTICATED_RESPONSE, { status: 401 });
+    const userId = authUser.id;
 
     const { rows: lists } = await query(
       `SELECT
@@ -24,13 +25,28 @@ export async function GET(request: NextRequest) {
       [userId]
     );
 
-    // Get items for each list
+    if (lists.length === 0) {
+      return NextResponse.json(lists);
+    }
+
+    // Batch-fetch all items for the user's lists in a single query
+    const listIds = lists.map((l: { id: number }) => l.id);
+    const { rows: allItems } = await query(
+      `SELECT * FROM shopping_list_items WHERE list_id = ANY($1) ORDER BY created_at ASC`,
+      [listIds]
+    );
+
+    // Group items by list_id
+    const itemsByList = new Map<number, typeof allItems>();
+    for (const item of allItems) {
+      if (!itemsByList.has(item.list_id)) {
+        itemsByList.set(item.list_id, []);
+      }
+      itemsByList.get(item.list_id)!.push(item);
+    }
+
     for (const list of lists) {
-      const { rows: items } = await query(
-        `SELECT * FROM shopping_list_items WHERE list_id = $1 ORDER BY created_at ASC`,
-        [list.id]
-      );
-      list.items = items;
+      list.items = itemsByList.get(list.id) || [];
     }
 
     return NextResponse.json(lists);
@@ -46,7 +62,8 @@ export async function POST(request: NextRequest) {
     const authUser = await getAuthUser();
     const body = await request.json();
     const { title } = body;
-    const userId = authUser?.id || body.user_id || 1;
+    if (!authUser) return NextResponse.json(UNAUTHENTICATED_RESPONSE, { status: 401 });
+    const userId = authUser.id;
 
     if (!title || !title.trim()) {
       return NextResponse.json({ error: "Titre requis" }, { status: 400 });

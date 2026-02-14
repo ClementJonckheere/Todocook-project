@@ -24,12 +24,12 @@ export async function POST(request: Request) {
 
     const user = rows[0];
 
-    // If user has no password (legacy seed user), accept any password and set it
+    // Reject login for legacy seed users that have no password set
     if (!user.password_hash) {
-      const { hashPassword } = await import("@/lib/auth");
-      const hash = hashPassword(password);
-      await query("UPDATE users SET password_hash = $1 WHERE id = $2", [hash, user.id]);
-    } else if (!verifyPassword(password, user.password_hash)) {
+      return NextResponse.json({ error: "Veuillez réinitialiser votre mot de passe" }, { status: 401 });
+    }
+
+    if (!verifyPassword(password, user.password_hash)) {
       return NextResponse.json({ error: "Email ou mot de passe incorrect" }, { status: 401 });
     }
 

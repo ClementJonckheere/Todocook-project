@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
 import { seedDatabase } from "@/lib/seed";
-import { getAuthUser } from "@/lib/auth";
+import { getAuthUser, UNAUTHENTICATED_RESPONSE } from "@/lib/auth";
 import { validateMaxLength, validatePositiveNumber } from "@/lib/validation";
 import { calculateNutrition, type Gender, type ActivityLevel, type SportType } from "@/lib/nutrition";
 
@@ -11,7 +11,8 @@ export async function GET() {
   try {
     await seedDatabase();
     const authUser = await getAuthUser();
-    const userId = authUser?.id || 1;
+    if (!authUser) return NextResponse.json(UNAUTHENTICATED_RESPONSE, { status: 401 });
+    const userId = authUser.id;
     const { rows } = await query("SELECT * FROM users WHERE id = $1", [userId]);
     if (rows.length === 0) {
       return NextResponse.json({ error: "Utilisateur non trouvé" }, { status: 404 });
@@ -28,7 +29,8 @@ export async function GET() {
 export async function PUT(request: Request) {
   try {
     const authUser = await getAuthUser();
-    const userId = authUser?.id || 1;
+    if (!authUser) return NextResponse.json(UNAUTHENTICATED_RESPONSE, { status: 401 });
+    const userId = authUser.id;
     const body = await request.json();
     let {
       first_name, last_name, age, weight, height,

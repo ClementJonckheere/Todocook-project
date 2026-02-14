@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/lib/db";
-import { getAuthUser } from "@/lib/auth";
+import { getAuthUser, UNAUTHENTICATED_RESPONSE } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -8,10 +8,11 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const authUser = await getAuthUser();
-    const userId = authUser?.id || 1;
+    if (!authUser) return NextResponse.json(UNAUTHENTICATED_RESPONSE, { status: 401 });
+    const userId = authUser.id;
     const type = searchParams.get("type") || "all";
 
-    const exportData: any = {};
+    const exportData: Record<string, unknown> = {};
 
     if (type === "all" || type === "recipes") {
       const { rows: recipes } = await query(

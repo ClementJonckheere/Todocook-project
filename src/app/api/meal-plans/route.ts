@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/lib/db";
 import { seedDatabase } from "@/lib/seed";
-import { getAuthUser } from "@/lib/auth";
+import { getAuthUser, UNAUTHENTICATED_RESPONSE } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -10,7 +10,8 @@ export async function GET(request: NextRequest) {
     await seedDatabase();
     const { searchParams } = new URL(request.url);
     const authUser = await getAuthUser();
-    const userId = authUser?.id || 1;
+    if (!authUser) return NextResponse.json(UNAUTHENTICATED_RESPONSE, { status: 401 });
+    const userId = authUser.id;
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
 
@@ -46,7 +47,8 @@ export async function GET(request: NextRequest) {
 export async function POST(request: Request) {
   try {
     const authUser = await getAuthUser();
-    const userId = authUser?.id || 1;
+    if (!authUser) return NextResponse.json(UNAUTHENTICATED_RESPONSE, { status: 401 });
+    const userId = authUser.id;
     const body = await request.json();
     const { recipe_id, date, meal_type } = body;
 
@@ -61,32 +63,20 @@ export async function POST(request: Request) {
     );
     const planId = planRows[0].id;
 
-    // Update daily log
-    const { rows: recipeRows } = await query("SELECT * FROM recipes WHERE id = $1", [recipe_id]);
+    // Update daily log atomically using ON CONFLICT
+    const { rows: recipeRows } = await query("SELECT calories, protein, carbs, fat FROM recipes WHERE id = $1", [recipe_id]);
     const recipe = recipeRows[0];
     if (recipe) {
-      const { rows: existing } = await query(
-        "SELECT * FROM daily_logs WHERE user_id = $1 AND date = $2",
-        [userId, date]
+      await query(
+        `INSERT INTO daily_logs (user_id, date, calories, protein, carbs, fat)
+         VALUES ($1, $2, $3, $4, $5, $6)
+         ON CONFLICT (user_id, date) DO UPDATE SET
+           calories = daily_logs.calories + EXCLUDED.calories,
+           protein = daily_logs.protein + EXCLUDED.protein,
+           carbs = daily_logs.carbs + EXCLUDED.carbs,
+           fat = daily_logs.fat + EXCLUDED.fat`,
+        [userId, date, recipe.calories, recipe.protein, recipe.carbs, recipe.fat]
       );
-
-      if (existing.length > 0) {
-        await query(
-          `UPDATE daily_logs SET
-            calories = calories + $1,
-            protein = protein + $2,
-            carbs = carbs + $3,
-            fat = fat + $4
-          WHERE id = $5`,
-          [recipe.calories, recipe.protein, recipe.carbs, recipe.fat, existing[0].id]
-        );
-      } else {
-        await query(
-          `INSERT INTO daily_logs (user_id, date, calories, protein, carbs, fat)
-           VALUES ($1, $2, $3, $4, $5, $6)`,
-          [userId, date, recipe.calories, recipe.protein, recipe.carbs, recipe.fat]
-        );
-      }
     }
 
     const { rows } = await query(
@@ -106,6 +96,9 @@ export async function POST(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
+    const authUser = await getAuthUser();
+    if (!authUser) return NextResponse.json(UNAUTHENTICATED_RESPONSE, { status: 401 });
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
 
@@ -113,7 +106,10 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: "id est requis" }, { status: 400 });
     }
 
-    await query("DELETE FROM meal_plans WHERE id = $1", [id]);
+    const result = await query("DELETE FROM meal_plans WHERE id = $1 AND user_id = $2", [id, authUser.id]);
+    if (result.rowCount === 0) {
+      return NextResponse.json({ error: "Repas non trouvé" }, { status: 404 });
+    }
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("DELETE /api/meal-plans error:", error);

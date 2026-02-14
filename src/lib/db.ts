@@ -188,6 +188,18 @@ async function runMigrations(client: any) {
       END IF;
     END $$;
   `);
+
+  // Add indexes for frequently queried columns
+  await client.query(`
+    CREATE INDEX IF NOT EXISTS idx_pantry_items_user_id ON pantry_items(user_id);
+    CREATE INDEX IF NOT EXISTS idx_meal_plans_user_id ON meal_plans(user_id);
+    CREATE INDEX IF NOT EXISTS idx_meal_plans_user_date ON meal_plans(user_id, date);
+    CREATE INDEX IF NOT EXISTS idx_daily_logs_user_id ON daily_logs(user_id);
+    CREATE INDEX IF NOT EXISTS idx_shopping_lists_user_id ON shopping_lists(user_id);
+    CREATE INDEX IF NOT EXISTS idx_shopping_list_items_list_id ON shopping_list_items(list_id);
+    CREATE INDEX IF NOT EXISTS idx_recipes_created_by ON recipes(created_by);
+    CREATE INDEX IF NOT EXISTS idx_recipes_is_public ON recipes(is_public);
+  `);
 }
 
 export async function getPool() {

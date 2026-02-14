@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/lib/db";
-import { getAuthUser } from "@/lib/auth";
+import { getAuthUser, UNAUTHENTICATED_RESPONSE } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -11,7 +11,8 @@ export async function GET(
 ) {
   try {
     const authUser = await getAuthUser();
-    const userId = authUser?.id || 1;
+    if (!authUser) return NextResponse.json(UNAUTHENTICATED_RESPONSE, { status: 401 });
+    const userId = authUser.id;
     const { id } = params;
 
     const { rows: lists } = await query(
@@ -42,7 +43,8 @@ export async function PUT(
 ) {
   try {
     const authUser = await getAuthUser();
-    const userId = authUser?.id || 1;
+    if (!authUser) return NextResponse.json(UNAUTHENTICATED_RESPONSE, { status: 401 });
+    const userId = authUser.id;
     const { id } = params;
     const body = await request.json();
     const { title } = body;
@@ -86,7 +88,8 @@ export async function DELETE(
 ) {
   try {
     const authUser = await getAuthUser();
-    const userId = authUser?.id || 1;
+    if (!authUser) return NextResponse.json(UNAUTHENTICATED_RESPONSE, { status: 401 });
+    const userId = authUser.id;
     const { id } = params;
     const result = await query(`DELETE FROM shopping_lists WHERE id = $1 AND user_id = $2`, [id, userId]);
     if (result.rowCount === 0) {
