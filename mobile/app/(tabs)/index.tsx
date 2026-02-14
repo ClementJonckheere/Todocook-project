@@ -22,6 +22,9 @@ interface User {
   first_name: string;
   last_name: string;
   daily_calorie_goal: number;
+  daily_protein_goal: number;
+  daily_carbs_goal: number;
+  daily_fat_goal: number;
 }
 
 interface Recipe {
@@ -39,6 +42,9 @@ interface MealPlan {
   date: string;
   meal_type: string;
   calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
 }
 
 const mealTypes = [
@@ -52,6 +58,9 @@ export default function DashboardScreen() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [todayCalories, setTodayCalories] = useState(0);
+  const [todayProtein, setTodayProtein] = useState(0);
+  const [todayCarbs, setTodayCarbs] = useState(0);
+  const [todayFat, setTodayFat] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<Recipe[]>([]);
   const [showSearch, setShowSearch] = useState(false);
@@ -85,6 +94,9 @@ export default function DashboardScreen() {
       const mealsArray = Array.isArray(mealsData) ? mealsData : [];
       setTodayMeals(mealsArray);
       setTodayCalories(mealsArray.reduce((sum: number, m: MealPlan) => sum + (m.calories || 0), 0));
+      setTodayProtein(mealsArray.reduce((sum: number, m: MealPlan) => sum + (m.protein || 0), 0));
+      setTodayCarbs(mealsArray.reduce((sum: number, m: MealPlan) => sum + (m.carbs || 0), 0));
+      setTodayFat(mealsArray.reduce((sum: number, m: MealPlan) => sum + (m.fat || 0), 0));
 
       const monday = startOfWeek(new Date(), { weekStartsOn: 1 });
       const weekRes = await fetch(
@@ -148,7 +160,11 @@ export default function DashboardScreen() {
   };
 
   const caloriePercent = user ? Math.min((todayCalories / user.daily_calorie_goal) * 100, 100) : 0;
-  const barColor = caloriePercent < 70 ? colors.primary[500] : caloriePercent < 90 ? colors.accent[500] : colors.red[500];
+  const proteinPercent = user ? Math.min((todayProtein / user.daily_protein_goal) * 100, 100) : 0;
+  const carbsPercent = user ? Math.min((todayCarbs / user.daily_carbs_goal) * 100, 100) : 0;
+  const fatPercent = user ? Math.min((todayFat / user.daily_fat_goal) * 100, 100) : 0;
+
+  const getBarColor = (percent: number) => percent < 70 ? colors.primary[500] : percent < 90 ? colors.accent[500] : colors.red[500];
 
   const monday = startOfWeek(new Date(), { weekStartsOn: 1 });
   const days = Array.from({ length: 7 }, (_, i) => addDays(monday, i));
@@ -167,14 +183,56 @@ export default function DashboardScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Calorie Bar */}
-        <View style={s.calorieCard}>
-          <View style={s.calorieRow}>
-            <Ionicons name="flame" size={20} color={colors.accent[500]} />
-            <Text style={s.calorieText}>{todayCalories} / {user?.daily_calorie_goal || 2000} kcal</Text>
+        {/* Nutrition Goals */}
+        <View style={s.nutritionCard}>
+          <Text style={s.nutritionTitle}>Objectifs du jour</Text>
+
+          {/* Calories */}
+          <View style={s.macroRow}>
+            <View style={s.macroHeader}>
+              <Ionicons name="flame" size={18} color={colors.accent[500]} />
+              <Text style={s.macroLabel}>Calories</Text>
+              <Text style={s.macroValue}>{todayCalories} / {user?.daily_calorie_goal || 2000} kcal</Text>
+            </View>
+            <View style={s.progressBg}>
+              <View style={[s.progressBar, { width: `${caloriePercent}%`, backgroundColor: getBarColor(caloriePercent) }]} />
+            </View>
           </View>
-          <View style={s.progressBg}>
-            <View style={[s.progressBar, { width: `${caloriePercent}%`, backgroundColor: barColor }]} />
+
+          {/* Protein */}
+          <View style={s.macroRow}>
+            <View style={s.macroHeader}>
+              <Ionicons name="fitness" size={18} color={colors.red[500]} />
+              <Text style={s.macroLabel}>Protéines</Text>
+              <Text style={s.macroValue}>{Math.round(todayProtein)} / {user?.daily_protein_goal || 50}g</Text>
+            </View>
+            <View style={s.progressBg}>
+              <View style={[s.progressBar, { width: `${proteinPercent}%`, backgroundColor: colors.red[400] }]} />
+            </View>
+          </View>
+
+          {/* Carbs */}
+          <View style={s.macroRow}>
+            <View style={s.macroHeader}>
+              <Ionicons name="leaf" size={18} color={colors.amber[600]} />
+              <Text style={s.macroLabel}>Glucides</Text>
+              <Text style={s.macroValue}>{Math.round(todayCarbs)} / {user?.daily_carbs_goal || 250}g</Text>
+            </View>
+            <View style={s.progressBg}>
+              <View style={[s.progressBar, { width: `${carbsPercent}%`, backgroundColor: colors.amber[600] }]} />
+            </View>
+          </View>
+
+          {/* Fat */}
+          <View style={s.macroRow}>
+            <View style={s.macroHeader}>
+              <Ionicons name="water" size={18} color={colors.blue[600]} />
+              <Text style={s.macroLabel}>Lipides</Text>
+              <Text style={s.macroValue}>{Math.round(todayFat)} / {user?.daily_fat_goal || 70}g</Text>
+            </View>
+            <View style={s.progressBg}>
+              <View style={[s.progressBar, { width: `${fatPercent}%`, backgroundColor: colors.blue[600] }]} />
+            </View>
           </View>
         </View>
 
@@ -303,9 +361,12 @@ const s = StyleSheet.create({
   greeting: { fontSize: 22, fontWeight: "bold", color: colors.gray[900] },
   subtitle: { fontSize: 14, color: colors.gray[500], marginTop: 2 },
   searchBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.gray[100], justifyContent: "center", alignItems: "center" },
-  calorieCard: { marginHorizontal: 20, marginTop: 16, backgroundColor: colors.white, borderRadius: 16, padding: 16, shadowColor: "#000", shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 },
-  calorieRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 10 },
-  calorieText: { fontSize: 16, fontWeight: "700", color: colors.gray[900] },
+  nutritionCard: { marginHorizontal: 20, marginTop: 16, backgroundColor: colors.white, borderRadius: 16, padding: 16, shadowColor: "#000", shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 },
+  nutritionTitle: { fontSize: 15, fontWeight: "700", color: colors.gray[900], marginBottom: 12 },
+  macroRow: { marginBottom: 12 },
+  macroHeader: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 6 },
+  macroLabel: { flex: 1, fontSize: 13, fontWeight: "600", color: colors.gray[700] },
+  macroValue: { fontSize: 12, fontWeight: "600", color: colors.gray[500] },
   progressBg: { height: 8, backgroundColor: colors.gray[100], borderRadius: 4, overflow: "hidden" },
   progressBar: { height: 8, borderRadius: 4 },
   quickActions: { marginHorizontal: 20, marginTop: 16 },
