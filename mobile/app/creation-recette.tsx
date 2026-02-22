@@ -13,7 +13,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { apiUrl } from "../src/lib/api";
+import { apiUrl, getHeaders } from "../src/lib/api";
 import { colors } from "../src/theme/colors";
 
 interface Ingredient {
@@ -47,7 +47,7 @@ export default function CreationRecetteScreen() {
     if (searchQuery.length >= 2) {
       const timer = setTimeout(async () => {
         try {
-          const res = await fetch(apiUrl(`/api/ingredients?search=${encodeURIComponent(searchQuery)}`));
+          const res = await fetch(apiUrl(`/api/ingredients?search=${encodeURIComponent(searchQuery)}`), { headers: getHeaders() });
           setSearchResults(await res.json());
         } catch {
           setSearchResults([]);
@@ -103,7 +103,7 @@ export default function CreationRecetteScreen() {
     try {
       await fetch(apiUrl("/api/recipes"), {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getHeaders(),
         body: JSON.stringify({
           name: name.trim(),
           description: description.trim(),

@@ -14,7 +14,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { format, addDays, startOfWeek } from "date-fns";
 import { fr } from "date-fns/locale";
-import { apiUrl } from "../../src/lib/api";
+import { apiUrl, getHeaders } from "../../src/lib/api";
 import { colors } from "../../src/theme/colors";
 
 interface User {
@@ -64,8 +64,8 @@ export default function DashboardScreen() {
   const loadData = useCallback(async () => {
     try {
       const [userRes, mealsRes] = await Promise.all([
-        fetch(apiUrl("/api/users")),
-        fetch(apiUrl(`/api/meal-plans?userId=1&startDate=${today}&endDate=${today}`)),
+        fetch(apiUrl("/api/users"), { headers: getHeaders() }),
+        fetch(apiUrl(`/api/meal-plans?userId=1&startDate=${today}&endDate=${today}`), { headers: getHeaders() }),
       ]);
 
       // Check if responses are ok
@@ -86,7 +86,8 @@ export default function DashboardScreen() {
 
       const monday = startOfWeek(new Date(), { weekStartsOn: 1 });
       const weekRes = await fetch(
-        apiUrl(`/api/meal-plans?userId=1&startDate=${format(monday, "yyyy-MM-dd")}&endDate=${format(addDays(monday, 6), "yyyy-MM-dd")}`)
+        apiUrl(`/api/meal-plans?userId=1&startDate=${format(monday, "yyyy-MM-dd")}&endDate=${format(addDays(monday, 6), "yyyy-MM-dd")}`),
+        { headers: getHeaders() }
       );
       if (weekRes.ok) {
         const weekData = await weekRes.json();
@@ -108,7 +109,7 @@ export default function DashboardScreen() {
     if (searchQuery.length >= 2) {
       const timer = setTimeout(async () => {
         try {
-          const res = await fetch(apiUrl(`/api/recipes?search=${encodeURIComponent(searchQuery)}`));
+          const res = await fetch(apiUrl(`/api/recipes?search=${encodeURIComponent(searchQuery)}`), { headers: getHeaders() });
           setSearchResults(await res.json());
         } catch {
           setSearchResults([]);
@@ -124,7 +125,7 @@ export default function DashboardScreen() {
     try {
       await fetch(apiUrl("/api/meal-plans"), {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getHeaders(),
         body: JSON.stringify({ user_id: 1, recipe_id: recipeId, date: today, meal_type: mealType }),
       });
       setSelectedRecipe(null);
@@ -138,7 +139,7 @@ export default function DashboardScreen() {
 
   const removeMeal = async (id: number) => {
     try {
-      await fetch(apiUrl(`/api/meal-plans?id=${id}`), { method: "DELETE" });
+      await fetch(apiUrl(`/api/meal-plans?id=${id}`), { method: "DELETE", headers: getHeaders() });
       loadData();
     } catch {
       Alert.alert("Erreur", "Impossible de supprimer le repas");

@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
   try {
     await seedDatabase();
     const { searchParams } = new URL(request.url);
-    const authUser = await getAuthUser();
+    const authUser = await getAuthUser(request);
     if (!authUser) return NextResponse.json(UNAUTHENTICATED_RESPONSE, { status: 401 });
     const userId = authUser.id;
     const startDate = searchParams.get("startDate");
@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: Request) {
   try {
-    const authUser = await getAuthUser();
+    const authUser = await getAuthUser(request);
     if (!authUser) return NextResponse.json(UNAUTHENTICATED_RESPONSE, { status: 401 });
     const userId = authUser.id;
     const body = await request.json();
@@ -96,7 +96,7 @@ export async function POST(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
-    const authUser = await getAuthUser();
+    const authUser = await getAuthUser(request);
     if (!authUser) return NextResponse.json(UNAUTHENTICATED_RESPONSE, { status: 401 });
 
     const { searchParams } = new URL(request.url);

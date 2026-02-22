@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 // GET all shopping lists for a user (sorted by updated_at DESC)
 export async function GET(request: NextRequest) {
   try {
-    const authUser = await getAuthUser();
+    const authUser = await getAuthUser(request);
     const { searchParams } = new URL(request.url);
     if (!authUser) return NextResponse.json(UNAUTHENTICATED_RESPONSE, { status: 401 });
     const userId = authUser.id;
@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
 // POST create a new shopping list
 export async function POST(request: NextRequest) {
   try {
-    const authUser = await getAuthUser();
+    const authUser = await getAuthUser(request);
     const body = await request.json();
     const { title } = body;
     if (!authUser) return NextResponse.json(UNAUTHENTICATED_RESPONSE, { status: 401 });

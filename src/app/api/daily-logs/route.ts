@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
   try {
     await seedDatabase();
     const { searchParams } = new URL(request.url);
-    const authUser = await getAuthUser();
+    const authUser = await getAuthUser(request);
     if (!authUser) return NextResponse.json(UNAUTHENTICATED_RESPONSE, { status: 401 });
     const userId = authUser.id;
     const days = Math.min(Math.max(parseInt(searchParams.get("days") || "30") || 30, 1), 365);

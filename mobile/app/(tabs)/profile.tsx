@@ -12,7 +12,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { format } from "date-fns";
-import { apiUrl } from "../../src/lib/api";
+import { apiUrl, getHeaders } from "../../src/lib/api";
 import { colors } from "../../src/theme/colors";
 import { calculateNutrition, type Gender, type ActivityLevel, type SportType } from "../../src/lib/nutrition";
 
@@ -59,9 +59,9 @@ export default function ProfileScreen() {
     try {
       const today = format(new Date(), "yyyy-MM-dd");
       const [userRes, logsRes, mealsRes] = await Promise.all([
-        fetch(apiUrl("/api/users")),
-        fetch(apiUrl("/api/daily-logs?days=30")),
-        fetch(apiUrl(`/api/meal-plans?userId=1&startDate=${today}&endDate=${today}`)),
+        fetch(apiUrl("/api/users"), { headers: getHeaders() }),
+        fetch(apiUrl("/api/daily-logs?days=30"), { headers: getHeaders() }),
+        fetch(apiUrl(`/api/meal-plans?userId=1&startDate=${today}&endDate=${today}`), { headers: getHeaders() }),
       ]);
       const userData = await userRes.json();
       const logsData = await logsRes.json();
@@ -87,7 +87,7 @@ export default function ProfileScreen() {
     try {
       await fetch(apiUrl("/api/users"), {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: getHeaders(),
         body: JSON.stringify({
           id: 1,
           age: parseInt(form.age) || null,
@@ -107,7 +107,7 @@ export default function ProfileScreen() {
 
   const handleLogout = async () => {
     try {
-      await fetch(apiUrl("/api/auth/logout"), { method: "POST" });
+      await fetch(apiUrl("/api/auth/logout"), { method: "POST", headers: getHeaders() });
       router.replace("/login");
     } catch {
       router.replace("/login");
@@ -132,7 +132,7 @@ export default function ProfileScreen() {
     try {
       await fetch(apiUrl("/api/users"), {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: getHeaders(),
         body: JSON.stringify({
           id: 1,
           age: parseInt(form.age) || null,

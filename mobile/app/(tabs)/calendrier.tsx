@@ -11,7 +11,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { format, addDays, startOfWeek, addWeeks } from "date-fns";
 import { fr } from "date-fns/locale";
-import { apiUrl } from "../../src/lib/api";
+import { apiUrl, getHeaders } from "../../src/lib/api";
 import { colors } from "../../src/theme/colors";
 
 interface MealPlan {
@@ -54,7 +54,7 @@ export default function CalendrierScreen() {
     const start = format(monday, "yyyy-MM-dd");
     const end = format(addDays(monday, 6), "yyyy-MM-dd");
     try {
-      const res = await fetch(apiUrl(`/api/meal-plans?userId=1&startDate=${start}&endDate=${end}`));
+      const res = await fetch(apiUrl(`/api/meal-plans?userId=1&startDate=${start}&endDate=${end}`), { headers: getHeaders() });
       setMeals(await res.json());
     } catch {
       // API not reachable
@@ -67,7 +67,7 @@ export default function CalendrierScreen() {
 
   const removeMeal = async (id: number) => {
     try {
-      await fetch(apiUrl(`/api/meal-plans?id=${id}`), { method: "DELETE" });
+      await fetch(apiUrl(`/api/meal-plans?id=${id}`), { method: "DELETE", headers: getHeaders() });
       loadMeals();
     } catch {
       Alert.alert("Erreur", "Impossible de supprimer le repas");
