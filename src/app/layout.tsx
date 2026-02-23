@@ -11,7 +11,7 @@ export const viewport: Viewport = {
   maximumScale: 1,
   userScalable: false,
   viewportFit: "cover",
-  themeColor: "#16a34a",
+  themeColor: "#237048",
 };
 
 export const metadata: Metadata = {
@@ -49,7 +49,7 @@ export default function RootLayout({
           })();
         `}} />
       </head>
-      <body className="min-h-screen bg-gray-50 dark:bg-gray-900 pb-safe transition-colors">
+      <body className="min-h-screen bg-warm-50 dark:bg-gray-900 pb-safe transition-colors">
         <AuthProvider>
           <ThemeProvider>
             <main className="max-w-lg mx-auto safe-area-inset">{children}</main>
