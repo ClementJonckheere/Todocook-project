@@ -140,6 +140,23 @@ export default function SportPage() {
         </div>
       </div>
 
+      {/* Space Switcher */}
+      <div className="px-4 mt-4">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl p-1.5 flex gap-1.5 shadow-card">
+          <Link
+            href="/dashboard"
+            className="flex-1 rounded-xl px-3 py-2.5 flex items-center justify-center gap-2 hover:bg-gray-50 dark:hover:bg-gray-700 active:scale-[0.97] transition-all"
+          >
+            <Flame size={16} className="text-gray-400 dark:text-gray-500" />
+            <span className="text-sm font-medium text-gray-400 dark:text-gray-500">Nourriture</span>
+          </Link>
+          <div className="flex-1 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl px-3 py-2.5 flex items-center justify-center gap-2">
+            <Dumbbell size={16} className="text-white" />
+            <span className="text-sm font-bold text-white">Sport</span>
+          </div>
+        </div>
+      </div>
+
       {/* Weekly Progress */}
       <div className="px-4 mt-3">
         <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-card">
