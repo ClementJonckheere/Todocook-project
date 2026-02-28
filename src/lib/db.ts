@@ -164,6 +164,87 @@ async function initializeDatabase() {
         checked BOOLEAN DEFAULT false,
         created_at TIMESTAMP DEFAULT NOW()
       );
+
+      -- MUSCULATION TABLES --
+
+      CREATE TABLE IF NOT EXISTS equipment (
+        id SERIAL PRIMARY KEY,
+        name TEXT NOT NULL UNIQUE,
+        icon TEXT,
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS exercises (
+        id SERIAL PRIMARY KEY,
+        name TEXT NOT NULL,
+        description TEXT,
+        muscle_group TEXT NOT NULL,
+        secondary_muscles TEXT[],
+        difficulty TEXT DEFAULT 'intermediate',
+        instructions TEXT,
+        video_url TEXT,
+        image_url TEXT,
+        rest_time_light INTEGER DEFAULT 60,
+        rest_time_moderate INTEGER DEFAULT 90,
+        rest_time_heavy INTEGER DEFAULT 120,
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS exercise_equipment (
+        id SERIAL PRIMARY KEY,
+        exercise_id INTEGER NOT NULL REFERENCES exercises(id) ON DELETE CASCADE,
+        equipment_id INTEGER NOT NULL REFERENCES equipment(id) ON DELETE CASCADE,
+        is_required BOOLEAN DEFAULT true,
+        UNIQUE(exercise_id, equipment_id)
+      );
+
+      CREATE TABLE IF NOT EXISTS user_routines (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        name TEXT NOT NULL,
+        description TEXT,
+        days_of_week INTEGER[],
+        is_active BOOLEAN DEFAULT true,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS routine_exercises (
+        id SERIAL PRIMARY KEY,
+        routine_id INTEGER NOT NULL REFERENCES user_routines(id) ON DELETE CASCADE,
+        exercise_id INTEGER NOT NULL REFERENCES exercises(id) ON DELETE CASCADE,
+        position INTEGER DEFAULT 0,
+        sets INTEGER DEFAULT 3,
+        reps INTEGER DEFAULT 10,
+        weight DOUBLE PRECISION DEFAULT 0,
+        rest_time INTEGER DEFAULT 90,
+        notes TEXT,
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS workout_logs (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        routine_id INTEGER REFERENCES user_routines(id) ON DELETE SET NULL,
+        date TEXT NOT NULL,
+        duration_minutes INTEGER,
+        notes TEXT,
+        completed BOOLEAN DEFAULT false,
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS workout_exercise_logs (
+        id SERIAL PRIMARY KEY,
+        workout_log_id INTEGER NOT NULL REFERENCES workout_logs(id) ON DELETE CASCADE,
+        exercise_id INTEGER NOT NULL REFERENCES exercises(id) ON DELETE CASCADE,
+        set_number INTEGER NOT NULL,
+        reps INTEGER,
+        weight DOUBLE PRECISION,
+        completed BOOLEAN DEFAULT false,
+        rest_time_taken INTEGER,
+        notes TEXT,
+        created_at TIMESTAMP DEFAULT NOW()
+      );
     `);
     initialized = true;
     // Seed database with initial data if empty (dynamic import to avoid circular dependency)
@@ -199,6 +280,93 @@ async function runMigrations(client: any) {
     CREATE INDEX IF NOT EXISTS idx_shopping_list_items_list_id ON shopping_list_items(list_id);
     CREATE INDEX IF NOT EXISTS idx_recipes_created_by ON recipes(created_by);
     CREATE INDEX IF NOT EXISTS idx_recipes_is_public ON recipes(is_public);
+  `);
+
+  // Create musculation tables if they don't exist
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS equipment (
+      id SERIAL PRIMARY KEY,
+      name TEXT NOT NULL UNIQUE,
+      icon TEXT,
+      created_at TIMESTAMP DEFAULT NOW()
+    );
+
+    CREATE TABLE IF NOT EXISTS exercises (
+      id SERIAL PRIMARY KEY,
+      name TEXT NOT NULL,
+      description TEXT,
+      muscle_group TEXT NOT NULL,
+      secondary_muscles TEXT[],
+      difficulty TEXT DEFAULT 'intermediate',
+      instructions TEXT,
+      video_url TEXT,
+      image_url TEXT,
+      rest_time_light INTEGER DEFAULT 60,
+      rest_time_moderate INTEGER DEFAULT 90,
+      rest_time_heavy INTEGER DEFAULT 120,
+      created_at TIMESTAMP DEFAULT NOW()
+    );
+
+    CREATE TABLE IF NOT EXISTS exercise_equipment (
+      id SERIAL PRIMARY KEY,
+      exercise_id INTEGER NOT NULL REFERENCES exercises(id) ON DELETE CASCADE,
+      equipment_id INTEGER NOT NULL REFERENCES equipment(id) ON DELETE CASCADE,
+      is_required BOOLEAN DEFAULT true,
+      UNIQUE(exercise_id, equipment_id)
+    );
+
+    CREATE TABLE IF NOT EXISTS user_routines (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      description TEXT,
+      days_of_week INTEGER[],
+      is_active BOOLEAN DEFAULT true,
+      created_at TIMESTAMP DEFAULT NOW(),
+      updated_at TIMESTAMP DEFAULT NOW()
+    );
+
+    CREATE TABLE IF NOT EXISTS routine_exercises (
+      id SERIAL PRIMARY KEY,
+      routine_id INTEGER NOT NULL REFERENCES user_routines(id) ON DELETE CASCADE,
+      exercise_id INTEGER NOT NULL REFERENCES exercises(id) ON DELETE CASCADE,
+      position INTEGER DEFAULT 0,
+      sets INTEGER DEFAULT 3,
+      reps INTEGER DEFAULT 10,
+      weight DOUBLE PRECISION DEFAULT 0,
+      rest_time INTEGER DEFAULT 90,
+      notes TEXT,
+      created_at TIMESTAMP DEFAULT NOW()
+    );
+
+    CREATE TABLE IF NOT EXISTS workout_logs (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      routine_id INTEGER REFERENCES user_routines(id) ON DELETE SET NULL,
+      date TEXT NOT NULL,
+      duration_minutes INTEGER,
+      notes TEXT,
+      completed BOOLEAN DEFAULT false,
+      created_at TIMESTAMP DEFAULT NOW()
+    );
+
+    CREATE TABLE IF NOT EXISTS workout_exercise_logs (
+      id SERIAL PRIMARY KEY,
+      workout_log_id INTEGER NOT NULL REFERENCES workout_logs(id) ON DELETE CASCADE,
+      exercise_id INTEGER NOT NULL REFERENCES exercises(id) ON DELETE CASCADE,
+      set_number INTEGER NOT NULL,
+      reps INTEGER,
+      weight DOUBLE PRECISION,
+      completed BOOLEAN DEFAULT false,
+      rest_time_taken INTEGER,
+      notes TEXT,
+      created_at TIMESTAMP DEFAULT NOW()
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_exercises_muscle_group ON exercises(muscle_group);
+    CREATE INDEX IF NOT EXISTS idx_user_routines_user_id ON user_routines(user_id);
+    CREATE INDEX IF NOT EXISTS idx_workout_logs_user_id ON workout_logs(user_id);
+    CREATE INDEX IF NOT EXISTS idx_workout_logs_date ON workout_logs(user_id, date);
   `);
 }
 

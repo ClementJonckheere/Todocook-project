@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Search, Plus, ChevronLeft, ChevronRight, X, Flame, Heart, Star, ClipboardList, BookOpen, Sparkles, ShoppingCart } from "lucide-react";
+import { Search, Plus, ChevronLeft, ChevronRight, X, Flame, Heart, Star, ClipboardList, BookOpen, Sparkles, ShoppingCart, Dumbbell } from "lucide-react";
 import Link from "next/link";
 import { format, addDays, startOfWeek } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -186,6 +186,13 @@ export default function DashboardPage() {
             </h1>
           </div>
           <div className="flex items-center gap-2">
+            <Link
+              href="/sport"
+              className="p-2.5 bg-gradient-to-br from-blue-500 to-purple-500 rounded-2xl shadow-card hover:shadow-card-hover transition-all"
+              title="Espace Musculation"
+            >
+              <Dumbbell size={20} className="text-white" />
+            </Link>
             <Link
               href="/pense-bete"
               className="p-2.5 bg-white dark:bg-gray-800 rounded-2xl shadow-card hover:shadow-card-hover transition-all"
