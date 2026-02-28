@@ -120,6 +120,17 @@ export default function LoginScreen() {
               <Text style={s.loginBtnText}>Se connecter</Text>
             )}
           </TouchableOpacity>
+
+          <TouchableOpacity
+            style={s.registerLink}
+            onPress={() => router.push("/register")}
+            activeOpacity={0.7}
+          >
+            <Text style={s.registerLinkText}>
+              Pas encore de compte ?{" "}
+              <Text style={s.registerLinkBold}>Créer un compte</Text>
+            </Text>
+          </TouchableOpacity>
         </View>
       </View>
     </KeyboardAvoidingView>
@@ -174,4 +185,8 @@ const s = StyleSheet.create({
     elevation: 4,
   },
   loginBtnText: { color: colors.white, fontSize: 16, fontWeight: "700" },
+
+  registerLink: { marginTop: 20, alignItems: "center" },
+  registerLinkText: { fontSize: 14, color: colors.gray[500] },
+  registerLinkBold: { color: colors.primary[600], fontWeight: "700" },
 });
