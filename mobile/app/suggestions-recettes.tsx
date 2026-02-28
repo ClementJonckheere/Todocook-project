@@ -45,9 +45,9 @@ export default function SuggestionsRecettesScreen() {
         apiUrl(`/api/suggestions?userId=1&maxMissing=${currentFilter}&offset=${currentOffset}`)
       );
       const data = await res.json();
-      setRecipes(data.recipes);
-      setHasMore(data.hasMore);
-      setTotal(data.total);
+      setRecipes(data.recipes || []);
+      setHasMore(data.hasMore || false);
+      setTotal(data.total || 0);
     } catch {
       setRecipes([]);
     }
