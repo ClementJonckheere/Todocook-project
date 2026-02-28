@@ -159,6 +159,24 @@ export default function DashboardScreen() {
           </View>
         </View>
 
+        {/* Space Switcher */}
+        <View style={s.switcherWrapper}>
+          <View style={s.switcher}>
+            <View style={s.switcherActive}>
+              <Ionicons name="flame-outline" size={16} color={colors.white} />
+              <Text style={s.switcherActiveText}>Nourriture</Text>
+            </View>
+            <TouchableOpacity
+              style={s.switcherOption}
+              onPress={() => router.push("/sport")}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="barbell-outline" size={16} color={colors.gray[400]} />
+              <Text style={s.switcherOptionText}>Sport</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
         {/* Quick actions row */}
         <View style={s.actionsRow}>
           <TouchableOpacity style={s.actionChip} onPress={() => setShowSearch(!showSearch)}>
@@ -340,6 +358,41 @@ const s = StyleSheet.create({
   progressWrapper: { paddingHorizontal: 20, marginTop: 12 },
   progressBg: { height: 6, backgroundColor: colors.warm[200], borderRadius: 3, overflow: "hidden" },
   progressBar: { height: 6, borderRadius: 3 },
+
+  // Space Switcher
+  switcherWrapper: { paddingHorizontal: 20, marginTop: 16 },
+  switcher: {
+    flexDirection: "row",
+    backgroundColor: colors.white,
+    borderRadius: 18,
+    padding: 5,
+    gap: 5,
+    shadowColor: "#000",
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  switcherActive: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: 13,
+    backgroundColor: colors.primary[500],
+  },
+  switcherActiveText: { fontSize: 13, fontWeight: "700", color: colors.white },
+  switcherOption: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: 13,
+  },
+  switcherOptionText: { fontSize: 13, fontWeight: "600", color: colors.gray[400] },
 
   // Quick actions
   actionsRow: { flexDirection: "row", gap: 8, paddingHorizontal: 20, marginTop: 20 },
