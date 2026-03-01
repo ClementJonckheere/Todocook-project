@@ -5,123 +5,108 @@
  * Uses keyword matching, category mapping, and fuzzy text similarity.
  */
 
-// Mapping of keywords to base ingredient names
+// Mapping of keywords to base ingredient names (noms exacts de la base de données)
 // IMPORTANT: Les ingrédients plus spécifiques sont définis en premier pour être matchés prioritairement
 const KEYWORD_MAPPINGS: Record<string, string[]> = {
   // === VIANDES - Variantes spécifiques d'abord ===
   // Poulet - variantes spécifiques
-  "filet de poulet": ["filet de poulet", "blanc de poulet", "escalope de poulet", "aiguillette de poulet", "chicken breast", "chicken fillet"],
-  "cuisse de poulet": ["cuisse de poulet", "haut de cuisse", "pilon de poulet", "chicken thigh", "chicken leg", "chicken drumstick"],
-  "poulet entier": ["poulet entier", "poulet roti", "whole chicken", "roast chicken"],
-  "poulet": ["poulet", "chicken", "volaille"], // Fallback générique
+  "Poulet (blanc)": ["filet de poulet", "blanc de poulet", "escalope de poulet", "aiguillette de poulet", "chicken breast", "chicken fillet"],
+  "Cuisse de poulet": ["cuisse de poulet", "haut de cuisse", "pilon de poulet", "chicken thigh", "chicken leg", "chicken drumstick"],
+  "Poulet entier": ["poulet entier", "poulet roti", "whole chicken", "roast chicken"],
+  "Poulet": ["poulet", "chicken", "volaille"], // Fallback générique (si ajouté)
 
   // Boeuf - variantes spécifiques
-  "steak hache": ["steak hache", "viande hachee", "hache boeuf", "ground beef", "beef mince", "boeuf hache"],
-  "steak": ["steak", "entrecote", "rumsteck", "faux-filet", "bavette", "onglet", "beef steak"],
-  "boeuf": ["boeuf", "beef"], // Fallback générique
+  "Steak haché": ["steak hache", "viande hachee", "hache boeuf", "ground beef", "beef mince", "boeuf hache"],
+  "Steak": ["steak", "entrecote", "rumsteck", "faux-filet", "bavette", "onglet", "beef steak"],
+  "Boeuf": ["boeuf", "beef"], // Fallback générique
 
   // Porc - variantes spécifiques
-  "lardons": ["lardons", "lardon", "bacon bits"],
-  "jambon": ["jambon", "ham"],
-  "saucisse": ["saucisse", "chipolata", "merguez", "sausage"],
-  "porc": ["porc", "pork"], // Fallback générique
+  "Lardons": ["lardons", "lardon", "bacon bits", "bacon"],
+  "Jambon": ["jambon", "ham"],
+  "Saucisse": ["saucisse", "chipolata", "merguez", "sausage"],
+  "Porc": ["porc", "pork"], // Fallback générique
 
-  "agneau": ["agneau", "lamb", "mouton"],
-  "dinde": ["dinde", "turkey", "escalope de dinde", "filet de dinde"],
-  "canard": ["canard", "duck", "magret", "magret de canard"],
+  "Agneau": ["agneau", "lamb", "mouton"],
+  "Dinde": ["dinde", "turkey", "escalope de dinde", "filet de dinde"],
+  "Canard": ["canard", "duck", "magret", "magret de canard"],
 
   // === POISSONS ===
-  "filet de saumon": ["filet de saumon", "pave de saumon", "salmon fillet"],
-  "saumon fume": ["saumon fume", "smoked salmon"],
-  "saumon": ["saumon", "salmon"], // Fallback
-  "thon en boite": ["thon en boite", "thon en conserve", "canned tuna"],
-  "thon": ["thon", "tuna"], // Fallback
-  "cabillaud": ["cabillaud", "cod", "morue", "filet de cabillaud"],
-  "crevettes": ["crevette", "shrimp", "gambas", "crevettes"],
+  "Saumon fumé": ["saumon fume", "smoked salmon"],
+  "Saumon": ["saumon", "salmon", "pave de saumon", "filet de saumon"],
+  "Thon en boîte": ["thon en boite", "thon en conserve", "canned tuna", "thon boite"],
+  "Thon": ["thon", "tuna"],
+  "Cabillaud": ["cabillaud", "cod", "morue", "filet de cabillaud"],
+  "Crevettes": ["crevette", "shrimp", "gambas", "crevettes"],
 
   // === FECULENTS ===
-  "riz blanc": ["riz blanc", "white rice"],
-  "riz basmati": ["riz basmati", "basmati rice"],
-  "riz complet": ["riz complet", "brown rice", "riz brun"],
-  "riz": ["riz", "rice"], // Fallback
-  "pates": ["pates", "pasta", "spaghetti", "tagliatelle", "penne", "fusilli", "macaroni", "nouilles", "linguine", "farfalle"],
-  "pomme de terre": ["pomme de terre", "potato", "patate", "pommes de terre"],
-  "puree": ["puree", "puree de pomme de terre", "mashed potato"],
-  "frites": ["frites", "frite", "french fries", "chips"],
-  "pain": ["pain", "bread", "baguette", "brioche"],
+  "Riz basmati": ["riz basmati", "basmati rice", "basmati"],
+  "Riz complet": ["riz complet", "brown rice", "riz brun"],
+  "Riz blanc": ["riz blanc", "white rice", "riz"],
+  "Pâtes": ["pates", "pasta", "spaghetti", "tagliatelle", "penne", "fusilli", "macaroni", "nouilles", "linguine", "farfalle"],
+  "Pomme de terre": ["pomme de terre", "potato", "patate", "pommes de terre"],
+  "Purée": ["puree", "puree de pomme de terre", "mashed potato"],
+  "Frites": ["frites", "frite", "french fries"],
+  "Pain": ["pain", "bread", "baguette", "brioche"],
+  "Farine": ["farine", "flour"],
 
   // === LEGUMES ===
   // Tomates - variantes spécifiques AVANT tomate générique
-  "sauce tomate": ["sauce tomate", "tomato sauce", "coulis de tomate", "passata", "puree de tomate"],
-  "concentre de tomate": ["concentre de tomate", "tomato paste", "double concentre", "triple concentre"],
-  "tomates pelees": ["tomates pelees", "tomate pelee", "peeled tomatoes", "tomates concassees"],
-  "tomates cerises": ["tomates cerises", "tomate cerise", "cherry tomatoes"],
-  "tomate": ["tomate", "tomato", "tomates"], // Fallback pour tomates fraîches
+  "Sauce tomate": ["sauce tomate", "tomato sauce", "coulis de tomate", "passata", "puree de tomate"],
+  "Concentré de tomate": ["concentre de tomate", "tomato paste", "double concentre", "triple concentre"],
+  "Tomates pelées": ["tomates pelees", "tomate pelee", "peeled tomatoes", "tomates concassees"],
+  "Tomates cerises": ["tomates cerises", "tomate cerise", "cherry tomatoes"],
+  "Tomate": ["tomate", "tomato", "tomates"], // Fallback pour tomates fraîches
 
-  "oignon": ["oignon", "onion", "oignons"],
-  "echalote": ["echalote", "shallot", "echalotes"],
-  "ail": ["ail", "garlic", "gousse d'ail"],
-  "carotte": ["carotte", "carrot", "carottes"],
-  "courgette": ["courgette", "zucchini", "courgettes"],
-  "poivron": ["poivron", "pepper", "poivrons", "poivron rouge", "poivron vert", "poivron jaune"],
-  "salade": ["salade", "laitue", "lettuce", "mesclun", "roquette", "mache"],
-  "champignons": ["champignon", "mushroom", "champignons", "champignon de paris"],
-  "haricots verts": ["haricot vert", "haricots verts", "green bean", "green beans"],
-  "brocoli": ["brocoli", "broccoli"],
-  "epinards": ["epinard", "spinach", "epinards"],
-  "aubergine": ["aubergine", "eggplant"],
+  "Oignon": ["oignon", "onion", "oignons"],
+  "Échalote": ["echalote", "shallot", "echalotes"],
+  "Ail": ["ail", "garlic", "gousse d'ail", "gousse ail"],
+  "Carotte": ["carotte", "carrot", "carottes"],
+  "Courgette": ["courgette", "zucchini", "courgettes"],
+  "Poivron": ["poivron", "pepper", "poivrons", "poivron rouge", "poivron vert", "poivron jaune"],
+  "Salade": ["salade", "laitue", "lettuce", "mesclun", "roquette", "mache"],
+  "Champignon": ["champignon", "mushroom", "champignons", "champignon de paris"],
+  "Haricots verts": ["haricot vert", "haricots verts", "green bean", "green beans"],
+  "Brocoli": ["brocoli", "broccoli"],
+  "Épinards": ["epinard", "spinach", "epinards"],
+  "Aubergine": ["aubergine", "eggplant"],
 
   // === PRODUITS LAITIERS ===
-  "lait": ["lait", "milk"],
-  "lait entier": ["lait entier", "whole milk"],
-  "lait demi-ecreme": ["lait demi-ecreme", "lait demi ecreme", "semi-skimmed milk"],
-  "beurre": ["beurre", "butter"],
-  "creme fraiche": ["creme fraiche", "creme epaisse", "sour cream"],
-  "creme liquide": ["creme liquide", "creme fluide", "liquid cream", "heavy cream"],
-  "creme": ["creme", "cream"], // Fallback
-  "fromage rape": ["fromage rape", "grated cheese", "emmental rape", "gruyere rape"],
-  "emmental": ["emmental"],
-  "parmesan": ["parmesan", "parmigiano"],
-  "mozzarella": ["mozzarella", "mozza"],
-  "gruyere": ["gruyere"],
-  "fromage": ["fromage", "cheese", "cheddar"], // Fallback
-  "yaourt": ["yaourt", "yogourt", "yogurt"],
-  "oeuf": ["oeuf", "egg", "oeufs", "eggs"],
+  "Lait": ["lait", "milk"],
+  "Beurre": ["beurre", "butter"],
+  "Crème fraîche": ["creme fraiche", "creme epaisse", "sour cream"],
+  "Crème liquide": ["creme liquide", "creme fluide", "liquid cream", "heavy cream"],
+  "Fromage râpé": ["fromage rape", "grated cheese", "emmental rape", "gruyere rape"],
+  "Emmental": ["emmental"],
+  "Parmesan": ["parmesan", "parmigiano"],
+  "Mozzarella": ["mozzarella", "mozza"],
+  "Yaourt": ["yaourt", "yogourt", "yogurt"],
+  "Oeuf": ["oeuf", "egg", "oeufs", "eggs"],
 
   // === HUILES ET CONDIMENTS ===
-  "huile d'olive": ["huile olive", "olive oil", "huile d'olive"],
-  "huile de tournesol": ["huile de tournesol", "huile tournesol", "sunflower oil"],
-  "huile": ["huile", "oil"], // Fallback
-  "vinaigre balsamique": ["vinaigre balsamique", "balsamic vinegar"],
-  "vinaigre": ["vinaigre", "vinegar"],
-  "moutarde": ["moutarde", "mustard"],
-  "mayonnaise": ["mayonnaise", "mayo"],
-  "ketchup": ["ketchup"],
-  "sauce soja": ["sauce soja", "soy sauce", "soja"],
+  "Huile d'olive": ["huile olive", "olive oil", "huile d'olive"],
+  "Huile de tournesol": ["huile de tournesol", "huile tournesol", "sunflower oil"],
+  "Vinaigre balsamique": ["vinaigre balsamique", "balsamic vinegar"],
+  "Vinaigre": ["vinaigre", "vinegar"],
+  "Moutarde": ["moutarde", "mustard"],
+  "Mayonnaise": ["mayonnaise", "mayo"],
+  "Ketchup": ["ketchup"],
+  "Sauce soja": ["sauce soja", "soy sauce", "soja"],
 
   // === EPICES ===
-  "sel": ["sel", "salt"],
-  "poivre": ["poivre", "black pepper", "poivre noir"],
-  "herbes de provence": ["herbes de provence", "herbes provence"],
-  "thym": ["thym", "thyme"],
-  "romarin": ["romarin", "rosemary"],
-  "basilic": ["basilic", "basil"],
-  "persil": ["persil", "parsley"],
-  "curry": ["curry"],
-  "paprika": ["paprika"],
-  "cumin": ["cumin"],
-
-  // === FRUITS ===
-  "pomme": ["pomme", "apple", "pommes"],
-  "banane": ["banane", "banana", "bananes"],
-  "orange": ["orange", "oranges"],
-  "citron": ["citron", "lemon", "citrons"],
+  "Sel": ["sel", "salt"],
+  "Poivre": ["poivre", "black pepper", "poivre noir"],
+  "Herbes de Provence": ["herbes de provence", "herbes provence"],
+  "Thym": ["thym", "thyme"],
+  "Basilic": ["basilic", "basil"],
+  "Persil": ["persil", "parsley"],
+  "Curry": ["curry"],
+  "Paprika": ["paprika"],
+  "Cumin": ["cumin"],
 
   // === AUTRES ===
-  "farine": ["farine", "flour"],
-  "sucre": ["sucre", "sugar"],
-  "miel": ["miel", "honey"],
-  "chocolat": ["chocolat", "chocolate", "cacao"],
+  "Sucre": ["sucre", "sugar"],
+  "Miel": ["miel", "honey"],
+  "Chocolat": ["chocolat", "chocolate", "cacao"],
 };
 
 // Category mappings from OpenFoodFacts categories to base ingredients
@@ -186,19 +171,19 @@ function findKeywordMatch(text: string, keywords: string[]): { matched: boolean;
 }
 
 // Groupes d'ingrédients liés - pour éviter les doublons entre variantes
+// Les noms correspondent exactement à ceux de la base de données
 const INGREDIENT_GROUPS: Record<string, string[]> = {
-  "poulet": ["filet de poulet", "cuisse de poulet", "poulet entier", "poulet"],
-  "boeuf": ["steak hache", "steak", "boeuf"],
-  "porc": ["lardons", "jambon", "saucisse", "porc"],
-  "saumon": ["filet de saumon", "saumon fume", "saumon"],
-  "thon": ["thon en boite", "thon"],
-  "riz": ["riz blanc", "riz basmati", "riz complet", "riz"],
-  "tomate": ["sauce tomate", "concentre de tomate", "tomates pelees", "tomates cerises", "tomate"],
-  "creme": ["creme fraiche", "creme liquide", "creme"],
-  "fromage": ["fromage rape", "emmental", "parmesan", "mozzarella", "gruyere", "fromage"],
-  "lait": ["lait entier", "lait demi-ecreme", "lait"],
-  "huile": ["huile d'olive", "huile de tournesol", "huile"],
-  "vinaigre": ["vinaigre balsamique", "vinaigre"],
+  "poulet": ["Poulet (blanc)", "Cuisse de poulet", "Poulet entier", "Poulet"],
+  "boeuf": ["Steak haché", "Steak", "Boeuf"],
+  "porc": ["Lardons", "Jambon", "Saucisse", "Porc"],
+  "saumon": ["Saumon fumé", "Saumon"],
+  "thon": ["Thon en boîte", "Thon"],
+  "riz": ["Riz blanc", "Riz basmati", "Riz complet"],
+  "tomate": ["Sauce tomate", "Concentré de tomate", "Tomates pelées", "Tomates cerises", "Tomate"],
+  "creme": ["Crème fraîche", "Crème liquide"],
+  "fromage": ["Fromage râpé", "Emmental", "Parmesan", "Mozzarella"],
+  "huile": ["Huile d'olive", "Huile de tournesol"],
+  "vinaigre": ["Vinaigre balsamique", "Vinaigre"],
 };
 
 /**

@@ -16,33 +16,96 @@ export async function seedDatabase() {
     ["clement@todocook.fr", "Clément", "Jonckheere", 25, 75, 180, "homme", "modere", 2200, 60, 275, 75]
   );
 
-  // Seed ingredients
+  // Seed ingredients - Ingrédients de base avec variantes spécifiques
   const ingredients = [
+    // === VIANDES ===
     { name: "Poulet (blanc)", calories: 165, protein: 31, carbs: 0, fat: 3.6, fiber: 0, unit: "g", category: "Viande" },
+    { name: "Cuisse de poulet", calories: 177, protein: 26, carbs: 0, fat: 8, fiber: 0, unit: "g", category: "Viande" },
+    { name: "Poulet entier", calories: 190, protein: 27, carbs: 0, fat: 9, fiber: 0, unit: "g", category: "Viande" },
+    { name: "Steak haché", calories: 250, protein: 26, carbs: 0, fat: 17, fiber: 0, unit: "g", category: "Viande" },
+    { name: "Steak", calories: 271, protein: 26, carbs: 0, fat: 18, fiber: 0, unit: "g", category: "Viande" },
+    { name: "Boeuf", calories: 250, protein: 26, carbs: 0, fat: 15, fiber: 0, unit: "g", category: "Viande" },
+    { name: "Lardons", calories: 260, protein: 15, carbs: 0.5, fat: 22, fiber: 0, unit: "g", category: "Viande" },
+    { name: "Jambon", calories: 145, protein: 21, carbs: 1.5, fat: 6, fiber: 0, unit: "g", category: "Viande" },
+    { name: "Saucisse", calories: 301, protein: 12, carbs: 2, fat: 27, fiber: 0, unit: "g", category: "Viande" },
+    { name: "Porc", calories: 242, protein: 27, carbs: 0, fat: 14, fiber: 0, unit: "g", category: "Viande" },
+    { name: "Dinde", calories: 135, protein: 30, carbs: 0, fat: 1, fiber: 0, unit: "g", category: "Viande" },
+
+    // === POISSONS ===
+    { name: "Saumon", calories: 208, protein: 20, carbs: 0, fat: 13, fiber: 0, unit: "g", category: "Poisson" },
+    { name: "Saumon fumé", calories: 117, protein: 18, carbs: 0, fat: 4.5, fiber: 0, unit: "g", category: "Poisson" },
+    { name: "Thon en boîte", calories: 132, protein: 29, carbs: 0, fat: 1.2, fiber: 0, unit: "g", category: "Poisson" },
+    { name: "Thon", calories: 144, protein: 30, carbs: 0, fat: 1.5, fiber: 0, unit: "g", category: "Poisson" },
+    { name: "Cabillaud", calories: 82, protein: 18, carbs: 0, fat: 0.7, fiber: 0, unit: "g", category: "Poisson" },
+    { name: "Crevettes", calories: 99, protein: 24, carbs: 0, fat: 0.3, fiber: 0, unit: "g", category: "Poisson" },
+
+    // === FECULENTS ===
     { name: "Riz blanc", calories: 130, protein: 2.7, carbs: 28, fat: 0.3, fiber: 0.4, unit: "g", category: "Féculents" },
+    { name: "Riz basmati", calories: 121, protein: 3.5, carbs: 25, fat: 0.4, fiber: 0.4, unit: "g", category: "Féculents" },
+    { name: "Riz complet", calories: 111, protein: 2.6, carbs: 23, fat: 0.9, fiber: 1.8, unit: "g", category: "Féculents" },
     { name: "Pâtes", calories: 131, protein: 5, carbs: 25, fat: 1.1, fiber: 1.8, unit: "g", category: "Féculents" },
+    { name: "Pomme de terre", calories: 77, protein: 2, carbs: 17, fat: 0.1, fiber: 2.2, unit: "g", category: "Féculents" },
+    { name: "Purée", calories: 83, protein: 2, carbs: 15, fat: 2, fiber: 1.4, unit: "g", category: "Féculents" },
+    { name: "Frites", calories: 312, protein: 3.4, carbs: 41, fat: 15, fiber: 3.8, unit: "g", category: "Féculents" },
+    { name: "Pain", calories: 265, protein: 9, carbs: 49, fat: 3.2, fiber: 2.7, unit: "g", category: "Boulangerie" },
+    { name: "Farine", calories: 364, protein: 10, carbs: 76, fat: 1, fiber: 2.7, unit: "g", category: "Féculents" },
+
+    // === LEGUMES ===
     { name: "Tomate", calories: 18, protein: 0.9, carbs: 3.9, fat: 0.2, fiber: 1.2, unit: "g", category: "Légumes" },
+    { name: "Sauce tomate", calories: 29, protein: 1.3, carbs: 5.8, fat: 0.2, fiber: 1.5, unit: "g", category: "Sauces" },
+    { name: "Concentré de tomate", calories: 82, protein: 4.3, carbs: 18, fat: 0.5, fiber: 4.1, unit: "g", category: "Sauces" },
+    { name: "Tomates pelées", calories: 18, protein: 0.9, carbs: 3.9, fat: 0.2, fiber: 1.2, unit: "g", category: "Conserves" },
+    { name: "Tomates cerises", calories: 18, protein: 0.9, carbs: 3.9, fat: 0.2, fiber: 1.2, unit: "g", category: "Légumes" },
     { name: "Oignon", calories: 40, protein: 1.1, carbs: 9.3, fat: 0.1, fiber: 1.7, unit: "g", category: "Légumes" },
+    { name: "Échalote", calories: 72, protein: 2.5, carbs: 17, fat: 0.1, fiber: 3.2, unit: "g", category: "Légumes" },
     { name: "Ail", calories: 149, protein: 6.4, carbs: 33, fat: 0.5, fiber: 2.1, unit: "g", category: "Légumes" },
+    { name: "Carotte", calories: 41, protein: 0.9, carbs: 10, fat: 0.2, fiber: 2.8, unit: "g", category: "Légumes" },
+    { name: "Courgette", calories: 17, protein: 1.2, carbs: 3.1, fat: 0.3, fiber: 1, unit: "g", category: "Légumes" },
+    { name: "Poivron", calories: 31, protein: 1, carbs: 6, fat: 0.3, fiber: 2.1, unit: "g", category: "Légumes" },
+    { name: "Champignon", calories: 22, protein: 3.1, carbs: 3.3, fat: 0.3, fiber: 1, unit: "g", category: "Légumes" },
+    { name: "Haricots verts", calories: 31, protein: 1.8, carbs: 7, fat: 0.1, fiber: 3.4, unit: "g", category: "Légumes" },
+    { name: "Brocoli", calories: 34, protein: 2.8, carbs: 7, fat: 0.4, fiber: 2.6, unit: "g", category: "Légumes" },
+    { name: "Épinards", calories: 23, protein: 2.9, carbs: 3.6, fat: 0.4, fiber: 2.2, unit: "g", category: "Légumes" },
+    { name: "Aubergine", calories: 25, protein: 1, carbs: 6, fat: 0.2, fiber: 3, unit: "g", category: "Légumes" },
+    { name: "Salade", calories: 15, protein: 1.4, carbs: 2.9, fat: 0.2, fiber: 1.3, unit: "g", category: "Légumes" },
+
+    // === PRODUITS LAITIERS ===
+    { name: "Lait", calories: 42, protein: 3.4, carbs: 5, fat: 1, fiber: 0, unit: "ml", category: "Produits laitiers" },
+    { name: "Beurre", calories: 717, protein: 0.9, carbs: 0.1, fat: 81, fiber: 0, unit: "g", category: "Produits laitiers" },
+    { name: "Crème fraîche", calories: 292, protein: 2.1, carbs: 2.8, fat: 30, fiber: 0, unit: "g", category: "Produits laitiers" },
+    { name: "Crème liquide", calories: 195, protein: 2.8, carbs: 3.7, fat: 19, fiber: 0, unit: "ml", category: "Produits laitiers" },
+    { name: "Fromage râpé", calories: 380, protein: 25, carbs: 1.5, fat: 30, fiber: 0, unit: "g", category: "Produits laitiers" },
+    { name: "Emmental", calories: 380, protein: 27, carbs: 0.4, fat: 30, fiber: 0, unit: "g", category: "Produits laitiers" },
+    { name: "Parmesan", calories: 431, protein: 38, carbs: 4.1, fat: 29, fiber: 0, unit: "g", category: "Produits laitiers" },
+    { name: "Mozzarella", calories: 280, protein: 22, carbs: 2.2, fat: 22, fiber: 0, unit: "g", category: "Produits laitiers" },
+    { name: "Yaourt", calories: 59, protein: 10, carbs: 3.6, fat: 0.7, fiber: 0, unit: "g", category: "Produits laitiers" },
+    { name: "Oeuf", calories: 155, protein: 13, carbs: 1.1, fat: 11, fiber: 0, unit: "pièce", category: "Oeufs" },
+
+    // === HUILES ET CONDIMENTS ===
     { name: "Huile d'olive", calories: 884, protein: 0, carbs: 0, fat: 100, fiber: 0, unit: "ml", category: "Huiles" },
+    { name: "Huile de tournesol", calories: 884, protein: 0, carbs: 0, fat: 100, fiber: 0, unit: "ml", category: "Huiles" },
+    { name: "Vinaigre", calories: 18, protein: 0, carbs: 0.6, fat: 0, fiber: 0, unit: "ml", category: "Condiments" },
+    { name: "Vinaigre balsamique", calories: 88, protein: 0.5, carbs: 17, fat: 0, fiber: 0, unit: "ml", category: "Condiments" },
+    { name: "Moutarde", calories: 66, protein: 4, carbs: 5.8, fat: 4, fiber: 3.3, unit: "g", category: "Condiments" },
+    { name: "Mayonnaise", calories: 680, protein: 1, carbs: 0.6, fat: 75, fiber: 0, unit: "g", category: "Condiments" },
+    { name: "Ketchup", calories: 112, protein: 1.7, carbs: 26, fat: 0.1, fiber: 0.3, unit: "g", category: "Condiments" },
+    { name: "Sauce soja", calories: 53, protein: 8, carbs: 5, fat: 0, fiber: 0.8, unit: "ml", category: "Condiments" },
+
+    // === ÉPICES ===
     { name: "Sel", calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, unit: "g", category: "Épices" },
     { name: "Poivre", calories: 251, protein: 10, carbs: 44, fat: 3.3, fiber: 25, unit: "g", category: "Épices" },
-    { name: "Beurre", calories: 717, protein: 0.9, carbs: 0.1, fat: 81, fiber: 0, unit: "g", category: "Produits laitiers" },
-    { name: "Lait", calories: 42, protein: 3.4, carbs: 5, fat: 1, fiber: 0, unit: "ml", category: "Produits laitiers" },
-    { name: "Oeuf", calories: 155, protein: 13, carbs: 1.1, fat: 11, fiber: 0, unit: "pièce", category: "Oeufs" },
-    { name: "Farine", calories: 364, protein: 10, carbs: 76, fat: 1, fiber: 2.7, unit: "g", category: "Féculents" },
+    { name: "Herbes de Provence", calories: 50, protein: 2, carbs: 10, fat: 1, fiber: 5, unit: "g", category: "Épices" },
+    { name: "Thym", calories: 101, protein: 6, carbs: 24, fat: 1.7, fiber: 14, unit: "g", category: "Épices" },
+    { name: "Basilic", calories: 23, protein: 3.2, carbs: 2.7, fat: 0.6, fiber: 1.6, unit: "g", category: "Épices" },
+    { name: "Persil", calories: 36, protein: 3, carbs: 6.3, fat: 0.8, fiber: 3.3, unit: "g", category: "Épices" },
+    { name: "Curry", calories: 325, protein: 14, carbs: 58, fat: 14, fiber: 33, unit: "g", category: "Épices" },
+    { name: "Paprika", calories: 282, protein: 14, carbs: 54, fat: 13, fiber: 35, unit: "g", category: "Épices" },
+    { name: "Cumin", calories: 375, protein: 18, carbs: 44, fat: 22, fiber: 11, unit: "g", category: "Épices" },
+
+    // === AUTRES ===
     { name: "Sucre", calories: 387, protein: 0, carbs: 100, fat: 0, fiber: 0, unit: "g", category: "Épicerie" },
-    { name: "Carotte", calories: 41, protein: 0.9, carbs: 10, fat: 0.2, fiber: 2.8, unit: "g", category: "Légumes" },
-    { name: "Pomme de terre", calories: 77, protein: 2, carbs: 17, fat: 0.1, fiber: 2.2, unit: "g", category: "Féculents" },
-    { name: "Courgette", calories: 17, protein: 1.2, carbs: 3.1, fat: 0.3, fiber: 1, unit: "g", category: "Légumes" },
-    { name: "Poivron rouge", calories: 31, protein: 1, carbs: 6, fat: 0.3, fiber: 2.1, unit: "g", category: "Légumes" },
-    { name: "Saumon", calories: 208, protein: 20, carbs: 0, fat: 13, fiber: 0, unit: "g", category: "Poisson" },
-    { name: "Crème fraîche", calories: 292, protein: 2.1, carbs: 2.8, fat: 30, fiber: 0, unit: "g", category: "Produits laitiers" },
-    { name: "Fromage râpé", calories: 380, protein: 25, carbs: 1.5, fat: 30, fiber: 0, unit: "g", category: "Produits laitiers" },
-    { name: "Champignon", calories: 22, protein: 3.1, carbs: 3.3, fat: 0.3, fiber: 1, unit: "g", category: "Légumes" },
-    { name: "Lardons", calories: 260, protein: 15, carbs: 0.5, fat: 22, fiber: 0, unit: "g", category: "Viande" },
-    { name: "Thon en boîte", calories: 132, protein: 29, carbs: 0, fat: 1.2, fiber: 0, unit: "g", category: "Poisson" },
-    { name: "Pain", calories: 265, protein: 9, carbs: 49, fat: 3.2, fiber: 2.7, unit: "g", category: "Boulangerie" },
+    { name: "Miel", calories: 304, protein: 0.3, carbs: 82, fat: 0, fiber: 0, unit: "g", category: "Épicerie" },
+    { name: "Chocolat", calories: 546, protein: 5, carbs: 60, fat: 31, fiber: 7, unit: "g", category: "Épicerie" },
   ];
 
   for (const ing of ingredients) {
