@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Package, AlertTriangle, ChefHat, Trash2, Filter } from "lucide-react";
+import { Package, AlertTriangle, ChefHat, Trash2, Filter, Brain } from "lucide-react";
 import { apiUrl } from "@/lib/api";
 
 interface PantryItem {
@@ -153,6 +153,23 @@ export default function GardeMangerPage() {
             className="w-full bg-primary-500 text-white py-2.5 rounded-lg text-sm font-medium"
           >
             Voir les recettes disponibles ({filterMissing} manquant{filterMissing !== 1 ? "s" : ""} max)
+          </button>
+        </div>
+
+        {/* ML Recommendations button */}
+        <div className="bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200 rounded-xl p-4 mt-3">
+          <div className="flex items-center gap-2 mb-2">
+            <Brain size={20} className="text-purple-600" />
+            <span className="font-medium text-purple-700 text-sm">Recommandations IA</span>
+          </div>
+          <p className="text-xs text-purple-600 mb-3">
+            Suggestions personnalisees basees sur vos preferences et historique
+          </p>
+          <button
+            onClick={() => router.push("/recommandations-ia")}
+            className="w-full bg-gradient-to-r from-purple-500 to-indigo-500 text-white py-2.5 rounded-lg text-sm font-medium"
+          >
+            Decouvrir les recommandations IA
           </button>
         </div>
       </div>
