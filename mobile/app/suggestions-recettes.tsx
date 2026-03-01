@@ -10,7 +10,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { apiUrl } from "../src/lib/api";
+import { apiUrl, getHeaders } from "../src/lib/api";
 import { colors } from "../src/theme/colors";
 
 interface SuggestedRecipe {
@@ -42,7 +42,8 @@ export default function SuggestionsRecettesScreen() {
     setLoading(true);
     try {
       const res = await fetch(
-        apiUrl(`/api/suggestions?userId=1&maxMissing=${currentFilter}&offset=${currentOffset}`)
+        apiUrl(`/api/suggestions?maxMissing=${currentFilter}&offset=${currentOffset}`),
+        { headers: getHeaders() }
       );
       const data = await res.json();
       setRecipes(data.recipes || []);
