@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/lib/db";
 import { seedDatabase } from "@/lib/seed";
-import { getAuthUser } from "@/lib/auth";
+import { getAuthUser, UNAUTHENTICATED_RESPONSE } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -9,9 +9,10 @@ export async function GET(request: NextRequest) {
   try {
     await seedDatabase();
     const { searchParams } = new URL(request.url);
-    const authUser = await getAuthUser();
-    const userId = authUser?.id || 1;
-    const days = parseInt(searchParams.get("days") || "30");
+    const authUser = await getAuthUser(request);
+    if (!authUser) return NextResponse.json(UNAUTHENTICATED_RESPONSE, { status: 401 });
+    const userId = authUser.id;
+    const days = Math.min(Math.max(parseInt(searchParams.get("days") || "30") || 30, 1), 365);
 
     const { rows } = await query(
       `SELECT * FROM daily_logs

@@ -55,7 +55,16 @@ export function clearSessionCookie() {
   cookieStore.delete(SESSION_COOKIE);
 }
 
-export async function getAuthUser(): Promise<{ id: number; email: string; first_name: string; last_name: string } | null> {
+export async function getAuthUser(request?: Request): Promise<{ id: number; email: string; first_name: string; last_name: string } | null> {
+  // Mobile dev bypass: check for X-Mobile-Dev header with user ID
+  if (request) {
+    const mobileDevUserId = request.headers.get("X-Mobile-Dev-User");
+    if (mobileDevUserId && process.env.NODE_ENV !== "production") {
+      const { rows } = await query("SELECT id, email, first_name, last_name FROM users WHERE id = $1", [mobileDevUserId]);
+      return rows[0] || null;
+    }
+  }
+
   const cookieStore = cookies();
   const token = cookieStore.get(SESSION_COOKIE)?.value;
   if (!token) return null;
@@ -79,3 +88,5 @@ export async function requireAuth(): Promise<{ id: number; email: string; first_
   if (!user) throw new Error("Non authentifié");
   return user;
 }
+
+export const UNAUTHENTICATED_RESPONSE = { error: "Non authentifié" } as const;

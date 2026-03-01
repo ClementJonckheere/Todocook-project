@@ -1,13 +1,14 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
-import { getAuthUser } from "@/lib/auth";
+import { getAuthUser, UNAUTHENTICATED_RESPONSE } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(_: Request, { params }: { params: { id: string } }) {
   try {
     const authUser = await getAuthUser();
-    const userId = authUser?.id || 1;
+    if (!authUser) return NextResponse.json(UNAUTHENTICATED_RESPONSE, { status: 401 });
+    const userId = authUser.id;
 
     const { rows: recipeRows } = await query("SELECT * FROM recipes WHERE id = $1", [params.id]);
     if (recipeRows.length === 0) {
@@ -56,7 +57,13 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
 
 export async function DELETE(_: Request, { params }: { params: { id: string } }) {
   try {
-    await query("DELETE FROM recipes WHERE id = $1", [params.id]);
+    const authUser = await getAuthUser();
+    if (!authUser) return NextResponse.json(UNAUTHENTICATED_RESPONSE, { status: 401 });
+
+    const result = await query("DELETE FROM recipes WHERE id = $1 AND created_by = $2", [params.id, authUser.id]);
+    if (result.rowCount === 0) {
+      return NextResponse.json({ error: "Recette non trouvée ou non autorisé" }, { status: 404 });
+    }
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("DELETE /api/recipes/[id] error:", error);

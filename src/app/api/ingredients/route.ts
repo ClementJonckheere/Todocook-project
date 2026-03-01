@@ -1,13 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/lib/db";
-import { seedDatabase } from "@/lib/seed";
 import { validateRequired } from "@/lib/validation";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   try {
-    await seedDatabase();
     const { searchParams } = new URL(request.url);
     const search = searchParams.get("search");
 

@@ -10,7 +10,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { apiUrl } from "../../src/lib/api";
+import { apiUrl, getHeaders } from "../../src/lib/api";
 import { colors } from "../../src/theme/colors";
 
 interface PantryItem {
@@ -42,13 +42,27 @@ export default function GardeMangerScreen() {
   const loadData = async () => {
     try {
       const [pantryRes, missingRes] = await Promise.all([
-        fetch(apiUrl("/api/pantry?userId=1")),
-        fetch(apiUrl("/api/pantry/missing?userId=1")),
+        fetch(apiUrl("/api/pantry?userId=1"), { headers: getHeaders() }),
+        fetch(apiUrl("/api/pantry/missing?userId=1"), { headers: getHeaders() }),
       ]);
-      setPantryItems(await pantryRes.json());
-      setMissingItems(await missingRes.json());
-    } catch {
-      // API not reachable
+
+      // Check if responses are ok
+      if (!pantryRes.ok || !missingRes.ok) {
+        console.error("API error:", pantryRes.status, missingRes.status);
+        return;
+      }
+
+      const pantryData = await pantryRes.json();
+      const missingData = await missingRes.json();
+
+      // Ensure we have arrays
+      setPantryItems(Array.isArray(pantryData) ? pantryData : []);
+      setMissingItems(Array.isArray(missingData) ? missingData : []);
+    } catch (err) {
+      console.error("Load data error:", err);
+      // Keep empty arrays on error
+      setPantryItems([]);
+      setMissingItems([]);
     }
   };
 
@@ -58,7 +72,7 @@ export default function GardeMangerScreen() {
 
   const removeItem = async (id: number) => {
     try {
-      await fetch(apiUrl(`/api/pantry?id=${id}`), { method: "DELETE" });
+      await fetch(apiUrl(`/api/pantry?id=${id}`), { method: "DELETE", headers: getHeaders() });
       loadData();
     } catch {
       Alert.alert("Erreur", "Impossible de supprimer.");

@@ -13,10 +13,11 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { Ionicons } from "@expo/vector-icons";
-import { apiUrl } from "../../src/lib/api";
 import { colors } from "../../src/theme/colors";
+import { apiUrl, getHeaders } from "../../src/lib/api";
 
 interface Product {
+  id: number;
   name: string;
   brand: string;
   category: string;
@@ -42,16 +43,24 @@ export default function ScannerScreen() {
     setLoading(true);
     setProduct(null);
     setAdded(false);
+    const url = apiUrl(`/api/scanner?barcode=${barcode}`);
     try {
-      const res = await fetch(apiUrl(`/api/scanner?barcode=${barcode}`));
+      const res = await fetch(url, { headers: getHeaders() });
+      if (!res.ok) {
+        Alert.alert("Erreur", "Erreur serveur lors de la recherche du produit.");
+        setLoading(false);
+        return;
+      }
+
       const data = await res.json();
-      if (data.error) {
+      if (data.error || !data.product) {
         Alert.alert("Produit non trouvé", "Ce code-barres n'a pas été reconnu.");
       } else {
-        setProduct(data);
+        setProduct(data.product);
       }
-    } catch {
-      Alert.alert("Erreur", "Impossible de rechercher ce produit.");
+    } catch (err) {
+      console.error("Scanner error:", err);
+      Alert.alert("Erreur", "Impossible de contacter le serveur.");
     }
     setLoading(false);
   };
@@ -59,19 +68,24 @@ export default function ScannerScreen() {
   const addToPantry = async () => {
     if (!product) return;
     try {
-      await fetch(apiUrl("/api/pantry"), {
+      const res = await fetch(apiUrl("/api/pantry"), {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getHeaders(),
         body: JSON.stringify({
           user_id: 1,
-          ingredient_name: product.name,
-          barcode: product.barcode,
+          ingredient_id: product.id,
           quantity: 1,
           unit: "unité",
         }),
       });
+      if (!res.ok) {
+        const text = await res.text();
+        console.error("Pantry error:", text);
+        throw new Error("Failed to add");
+      }
       setAdded(true);
-    } catch {
+    } catch (err) {
+      console.error("Add to pantry error:", err);
       Alert.alert("Erreur", "Impossible d'ajouter au garde-manger.");
     }
   };

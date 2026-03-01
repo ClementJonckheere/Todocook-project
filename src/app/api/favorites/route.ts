@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/lib/db";
-import { getAuthUser } from "@/lib/auth";
+import { getAuthUser, UNAUTHENTICATED_RESPONSE } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   try {
     const authUser = await getAuthUser();
-    const userId = authUser?.id || 1;
+    if (!authUser) return NextResponse.json(UNAUTHENTICATED_RESPONSE, { status: 401 });
+    const userId = authUser.id;
 
     const { rows } = await query(
       `SELECT r.*, STRING_AGG(i.name, ', ') as ingredient_names,
@@ -34,7 +35,8 @@ export async function GET(request: NextRequest) {
 export async function POST(request: Request) {
   try {
     const authUser = await getAuthUser();
-    const userId = authUser?.id || 1;
+    if (!authUser) return NextResponse.json(UNAUTHENTICATED_RESPONSE, { status: 401 });
+    const userId = authUser.id;
     const body = await request.json();
     const { recipe_id } = body;
 
@@ -57,7 +59,8 @@ export async function POST(request: Request) {
 export async function DELETE(request: Request) {
   try {
     const authUser = await getAuthUser();
-    const userId = authUser?.id || 1;
+    if (!authUser) return NextResponse.json(UNAUTHENTICATED_RESPONSE, { status: 401 });
+    const userId = authUser.id;
     const { searchParams } = new URL(request.url);
     const recipeId = searchParams.get("recipeId");
 

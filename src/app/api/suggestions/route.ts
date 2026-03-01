@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/lib/db";
-import { getAuthUser } from "@/lib/auth";
+import { getAuthUser, UNAUTHENTICATED_RESPONSE } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -8,9 +8,10 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const authUser = await getAuthUser();
-    const userId = authUser?.id || 1;
-    const maxMissing = parseInt(searchParams.get("maxMissing") || "0");
-    const offset = parseInt(searchParams.get("offset") || "0");
+    if (!authUser) return NextResponse.json(UNAUTHENTICATED_RESPONSE, { status: 401 });
+    const userId = authUser.id;
+    const maxMissing = Math.min(Math.max(parseInt(searchParams.get("maxMissing") || "0") || 0, 0), 20);
+    const offset = Math.max(parseInt(searchParams.get("offset") || "0") || 0, 0);
     const limit = 10;
 
     const { rows: pantryItems } = await query(
@@ -55,18 +56,25 @@ export async function GET(request: NextRequest) {
     const total = filtered.length;
     const paginatedRecipes = filtered.slice(offset, offset + limit);
 
-    const enriched = [];
-    for (const recipe of paginatedRecipes) {
-      const missingNames: string[] = [];
-      for (const id of recipe.missing_ingredient_ids) {
-        const { rows } = await query("SELECT name FROM ingredients WHERE id = $1", [id]);
-        missingNames.push(rows[0]?.name || "Inconnu");
+    // Batch-fetch all missing ingredient names in a single query
+    const allMissingIds = Array.from(new Set(paginatedRecipes.flatMap((r: { missing_ingredient_ids: number[] }) => r.missing_ingredient_ids)));
+    const ingredientNameMap = new Map<number, string>();
+    if (allMissingIds.length > 0) {
+      const { rows: ingredientRows } = await query(
+        "SELECT id, name FROM ingredients WHERE id = ANY($1)",
+        [allMissingIds]
+      );
+      for (const row of ingredientRows) {
+        ingredientNameMap.set(row.id, row.name);
       }
-      enriched.push({
-        ...recipe,
-        missing_ingredient_names: missingNames,
-      });
     }
+
+    const enriched = paginatedRecipes.map((recipe: { missing_ingredient_ids: number[] }) => ({
+      ...recipe,
+      missing_ingredient_names: recipe.missing_ingredient_ids.map(
+        (id: number) => ingredientNameMap.get(id) || "Inconnu"
+      ),
+    }));
 
     return NextResponse.json({
       recipes: enriched,
