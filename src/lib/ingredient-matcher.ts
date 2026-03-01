@@ -6,73 +6,118 @@
  */
 
 // Mapping of keywords to base ingredient names
+// IMPORTANT: Les ingrédients plus spécifiques sont définis en premier pour être matchés prioritairement
 const KEYWORD_MAPPINGS: Record<string, string[]> = {
-  // Viandes
-  "poulet": ["poulet", "chicken", "volaille", "blanc de poulet", "filet de poulet", "escalope de poulet"],
-  "boeuf": ["boeuf", "beef", "steak", "viande hachee", "hache boeuf", "entrecote", "rumsteck"],
-  "porc": ["porc", "pork", "jambon", "lardons", "bacon", "saucisse", "chipolata"],
+  // === VIANDES - Variantes spécifiques d'abord ===
+  // Poulet - variantes spécifiques
+  "filet de poulet": ["filet de poulet", "blanc de poulet", "escalope de poulet", "aiguillette de poulet", "chicken breast", "chicken fillet"],
+  "cuisse de poulet": ["cuisse de poulet", "haut de cuisse", "pilon de poulet", "chicken thigh", "chicken leg", "chicken drumstick"],
+  "poulet entier": ["poulet entier", "poulet roti", "whole chicken", "roast chicken"],
+  "poulet": ["poulet", "chicken", "volaille"], // Fallback générique
+
+  // Boeuf - variantes spécifiques
+  "steak hache": ["steak hache", "viande hachee", "hache boeuf", "ground beef", "beef mince", "boeuf hache"],
+  "steak": ["steak", "entrecote", "rumsteck", "faux-filet", "bavette", "onglet", "beef steak"],
+  "boeuf": ["boeuf", "beef"], // Fallback générique
+
+  // Porc - variantes spécifiques
+  "lardons": ["lardons", "lardon", "bacon bits"],
+  "jambon": ["jambon", "ham"],
+  "saucisse": ["saucisse", "chipolata", "merguez", "sausage"],
+  "porc": ["porc", "pork"], // Fallback générique
+
   "agneau": ["agneau", "lamb", "mouton"],
-  "dinde": ["dinde", "turkey"],
-  "canard": ["canard", "duck", "magret"],
+  "dinde": ["dinde", "turkey", "escalope de dinde", "filet de dinde"],
+  "canard": ["canard", "duck", "magret", "magret de canard"],
 
-  // Poissons
-  "saumon": ["saumon", "salmon"],
-  "thon": ["thon", "tuna"],
-  "cabillaud": ["cabillaud", "cod", "morue"],
-  "crevettes": ["crevette", "shrimp", "gambas"],
+  // === POISSONS ===
+  "filet de saumon": ["filet de saumon", "pave de saumon", "salmon fillet"],
+  "saumon fume": ["saumon fume", "smoked salmon"],
+  "saumon": ["saumon", "salmon"], // Fallback
+  "thon en boite": ["thon en boite", "thon en conserve", "canned tuna"],
+  "thon": ["thon", "tuna"], // Fallback
+  "cabillaud": ["cabillaud", "cod", "morue", "filet de cabillaud"],
+  "crevettes": ["crevette", "shrimp", "gambas", "crevettes"],
 
-  // Feculents
-  "riz blanc": ["riz", "rice"],
-  "pates": ["pates", "pasta", "spaghetti", "tagliatelle", "penne", "fusilli", "macaroni", "nouilles"],
-  "pomme de terre": ["pomme de terre", "potato", "patate", "frite", "puree"],
+  // === FECULENTS ===
+  "riz blanc": ["riz blanc", "white rice"],
+  "riz basmati": ["riz basmati", "basmati rice"],
+  "riz complet": ["riz complet", "brown rice", "riz brun"],
+  "riz": ["riz", "rice"], // Fallback
+  "pates": ["pates", "pasta", "spaghetti", "tagliatelle", "penne", "fusilli", "macaroni", "nouilles", "linguine", "farfalle"],
+  "pomme de terre": ["pomme de terre", "potato", "patate", "pommes de terre"],
+  "puree": ["puree", "puree de pomme de terre", "mashed potato"],
+  "frites": ["frites", "frite", "french fries", "chips"],
   "pain": ["pain", "bread", "baguette", "brioche"],
 
-  // Legumes
-  "tomate": ["tomate", "tomato", "tomates"],
-  "oignon": ["oignon", "onion", "echalote", "oignons"],
-  "ail": ["ail", "garlic"],
+  // === LEGUMES ===
+  // Tomates - variantes spécifiques AVANT tomate générique
+  "sauce tomate": ["sauce tomate", "tomato sauce", "coulis de tomate", "passata", "puree de tomate"],
+  "concentre de tomate": ["concentre de tomate", "tomato paste", "double concentre", "triple concentre"],
+  "tomates pelees": ["tomates pelees", "tomate pelee", "peeled tomatoes", "tomates concassees"],
+  "tomates cerises": ["tomates cerises", "tomate cerise", "cherry tomatoes"],
+  "tomate": ["tomate", "tomato", "tomates"], // Fallback pour tomates fraîches
+
+  "oignon": ["oignon", "onion", "oignons"],
+  "echalote": ["echalote", "shallot", "echalotes"],
+  "ail": ["ail", "garlic", "gousse d'ail"],
   "carotte": ["carotte", "carrot", "carottes"],
-  "courgette": ["courgette", "zucchini"],
-  "poivron": ["poivron", "pepper", "poivrons"],
+  "courgette": ["courgette", "zucchini", "courgettes"],
+  "poivron": ["poivron", "pepper", "poivrons", "poivron rouge", "poivron vert", "poivron jaune"],
   "salade": ["salade", "laitue", "lettuce", "mesclun", "roquette", "mache"],
-  "champignons": ["champignon", "mushroom", "champignons"],
-  "haricots verts": ["haricot", "haricots verts", "green bean"],
+  "champignons": ["champignon", "mushroom", "champignons", "champignon de paris"],
+  "haricots verts": ["haricot vert", "haricots verts", "green bean", "green beans"],
   "brocoli": ["brocoli", "broccoli"],
   "epinards": ["epinard", "spinach", "epinards"],
   "aubergine": ["aubergine", "eggplant"],
 
-  // Produits laitiers
+  // === PRODUITS LAITIERS ===
   "lait": ["lait", "milk"],
+  "lait entier": ["lait entier", "whole milk"],
+  "lait demi-ecreme": ["lait demi-ecreme", "lait demi ecreme", "semi-skimmed milk"],
   "beurre": ["beurre", "butter"],
-  "creme fraiche": ["creme", "cream", "creme fraiche"],
-  "fromage rape": ["fromage", "cheese", "emmental", "gruyere", "parmesan", "mozzarella", "cheddar"],
+  "creme fraiche": ["creme fraiche", "creme epaisse", "sour cream"],
+  "creme liquide": ["creme liquide", "creme fluide", "liquid cream", "heavy cream"],
+  "creme": ["creme", "cream"], // Fallback
+  "fromage rape": ["fromage rape", "grated cheese", "emmental rape", "gruyere rape"],
+  "emmental": ["emmental"],
+  "parmesan": ["parmesan", "parmigiano"],
+  "mozzarella": ["mozzarella", "mozza"],
+  "gruyere": ["gruyere"],
+  "fromage": ["fromage", "cheese", "cheddar"], // Fallback
   "yaourt": ["yaourt", "yogourt", "yogurt"],
   "oeuf": ["oeuf", "egg", "oeufs", "eggs"],
 
-  // Huiles et condiments
+  // === HUILES ET CONDIMENTS ===
   "huile d'olive": ["huile olive", "olive oil", "huile d'olive"],
-  "huile": ["huile", "oil"],
+  "huile de tournesol": ["huile de tournesol", "huile tournesol", "sunflower oil"],
+  "huile": ["huile", "oil"], // Fallback
+  "vinaigre balsamique": ["vinaigre balsamique", "balsamic vinegar"],
   "vinaigre": ["vinaigre", "vinegar"],
   "moutarde": ["moutarde", "mustard"],
   "mayonnaise": ["mayonnaise", "mayo"],
-  "ketchup": ["ketchup", "sauce tomate"],
+  "ketchup": ["ketchup"],
   "sauce soja": ["sauce soja", "soy sauce", "soja"],
 
-  // Epices
+  // === EPICES ===
   "sel": ["sel", "salt"],
-  "poivre": ["poivre", "pepper"],
-  "herbes de provence": ["herbes", "thym", "romarin", "laurier", "origan"],
+  "poivre": ["poivre", "black pepper", "poivre noir"],
+  "herbes de provence": ["herbes de provence", "herbes provence"],
+  "thym": ["thym", "thyme"],
+  "romarin": ["romarin", "rosemary"],
+  "basilic": ["basilic", "basil"],
+  "persil": ["persil", "parsley"],
   "curry": ["curry"],
   "paprika": ["paprika"],
   "cumin": ["cumin"],
 
-  // Fruits
-  "pomme": ["pomme", "apple"],
-  "banane": ["banane", "banana"],
-  "orange": ["orange"],
-  "citron": ["citron", "lemon"],
+  // === FRUITS ===
+  "pomme": ["pomme", "apple", "pommes"],
+  "banane": ["banane", "banana", "bananes"],
+  "orange": ["orange", "oranges"],
+  "citron": ["citron", "lemon", "citrons"],
 
-  // Autres
+  // === AUTRES ===
   "farine": ["farine", "flour"],
   "sucre": ["sucre", "sugar"],
   "miel": ["miel", "honey"],
@@ -120,47 +165,121 @@ function normalizeText(text: string): string {
 }
 
 /**
- * Check if text contains any of the keywords
+ * Check if text contains any of the keywords and return match info
  */
-function containsKeyword(text: string, keywords: string[]): boolean {
+function findKeywordMatch(text: string, keywords: string[]): { matched: boolean; bestKeyword: string; score: number } {
   const normalized = normalizeText(text);
-  return keywords.some(keyword => {
+  let bestMatch = { matched: false, bestKeyword: "", score: 0 };
+
+  for (const keyword of keywords) {
     const normalizedKeyword = normalizeText(keyword);
-    return normalized.includes(normalizedKeyword);
-  });
+    if (normalized.includes(normalizedKeyword)) {
+      // Score basé sur la longueur du mot-clé (plus long = plus spécifique)
+      const score = normalizedKeyword.length;
+      if (score > bestMatch.score) {
+        bestMatch = { matched: true, bestKeyword: keyword, score };
+      }
+    }
+  }
+
+  return bestMatch;
 }
+
+// Groupes d'ingrédients liés - pour éviter les doublons entre variantes
+const INGREDIENT_GROUPS: Record<string, string[]> = {
+  "poulet": ["filet de poulet", "cuisse de poulet", "poulet entier", "poulet"],
+  "boeuf": ["steak hache", "steak", "boeuf"],
+  "porc": ["lardons", "jambon", "saucisse", "porc"],
+  "saumon": ["filet de saumon", "saumon fume", "saumon"],
+  "thon": ["thon en boite", "thon"],
+  "riz": ["riz blanc", "riz basmati", "riz complet", "riz"],
+  "tomate": ["sauce tomate", "concentre de tomate", "tomates pelees", "tomates cerises", "tomate"],
+  "creme": ["creme fraiche", "creme liquide", "creme"],
+  "fromage": ["fromage rape", "emmental", "parmesan", "mozzarella", "gruyere", "fromage"],
+  "lait": ["lait entier", "lait demi-ecreme", "lait"],
+  "huile": ["huile d'olive", "huile de tournesol", "huile"],
+  "vinaigre": ["vinaigre balsamique", "vinaigre"],
+};
 
 /**
  * Find matching base ingredients for a scanned product
+ * Priorise les matchs les plus spécifiques et évite les doublons de variantes
  */
 export function findMatchingIngredients(
   productName: string,
   productCategory?: string | null,
   productBrand?: string | null
 ): string[] {
-  const matches: string[] = [];
   const searchText = `${productName} ${productCategory || ""} ${productBrand || ""}`;
+
+  // Collecter tous les matchs avec leur score de spécificité
+  const matchesWithScores: Array<{ ingredient: string; score: number }> = [];
 
   // Check keyword mappings
   for (const [baseIngredient, keywords] of Object.entries(KEYWORD_MAPPINGS)) {
-    if (containsKeyword(searchText, keywords)) {
-      matches.push(baseIngredient);
+    const matchInfo = findKeywordMatch(searchText, keywords);
+    if (matchInfo.matched) {
+      matchesWithScores.push({
+        ingredient: baseIngredient,
+        score: matchInfo.score
+      });
     }
   }
 
-  // Check category mappings if we have a category
+  // Trier par score décroissant (plus spécifique en premier)
+  matchesWithScores.sort((a, b) => b.score - a.score);
+
+  // Filtrer pour garder seulement le match le plus spécifique par groupe
+  const finalMatches: string[] = [];
+  const usedGroups = new Set<string>();
+
+  for (const match of matchesWithScores) {
+    // Trouver le groupe de cet ingrédient
+    let ingredientGroup: string | null = null;
+    for (const [group, members] of Object.entries(INGREDIENT_GROUPS)) {
+      if (members.includes(match.ingredient)) {
+        ingredientGroup = group;
+        break;
+      }
+    }
+
+    // Si l'ingrédient appartient à un groupe déjà utilisé, le sauter
+    if (ingredientGroup && usedGroups.has(ingredientGroup)) {
+      continue;
+    }
+
+    // Ajouter le match et marquer le groupe comme utilisé
+    finalMatches.push(match.ingredient);
+    if (ingredientGroup) {
+      usedGroups.add(ingredientGroup);
+    }
+  }
+
+  // Check category mappings if we have a category (seulement si pas déjà matché)
   if (productCategory) {
     const normalizedCategory = normalizeText(productCategory);
     for (const [categoryKey, baseIngredient] of Object.entries(CATEGORY_MAPPINGS)) {
       if (normalizedCategory.includes(normalizeText(categoryKey))) {
-        if (!matches.includes(baseIngredient)) {
-          matches.push(baseIngredient);
+        // Vérifier que cet ingrédient ou son groupe n'est pas déjà présent
+        let shouldAdd = !finalMatches.includes(baseIngredient);
+
+        if (shouldAdd) {
+          for (const [group, members] of Object.entries(INGREDIENT_GROUPS)) {
+            if (members.includes(baseIngredient) && usedGroups.has(group)) {
+              shouldAdd = false;
+              break;
+            }
+          }
+        }
+
+        if (shouldAdd) {
+          finalMatches.push(baseIngredient);
         }
       }
     }
   }
 
-  return matches;
+  return finalMatches;
 }
 
 /**
