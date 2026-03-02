@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { ScanBarcode, Plus, Check, AlertCircle, X, Keyboard } from "lucide-react";
+import { ScanBarcode, Plus, Check, AlertCircle, X, Keyboard, Search, ChevronRight } from "lucide-react";
 import { apiUrl } from "@/lib/api";
 
 interface Product {
@@ -17,6 +17,17 @@ interface Product {
   category: string | null;
 }
 
+interface Ingredient {
+  id: number;
+  name: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  category: string | null;
+  unit: string;
+}
+
 export default function ScannerPage() {
   const [scanning, setScanning] = useState(false);
   const [manualBarcode, setManualBarcode] = useState("");
@@ -26,6 +37,13 @@ export default function ScannerPage() {
   const [errorMsg, setErrorMsg] = useState("");
   const scannerRef = useRef<HTMLDivElement>(null);
   const html5QrCodeRef = useRef<any>(null);
+
+  // Recherche par nom
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<Ingredient[]>([]);
+  const [showSearch, setShowSearch] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  const [selectedIngredient, setSelectedIngredient] = useState<Ingredient | null>(null);
 
   const startScanner = async () => {
     setScanning(true);
@@ -90,17 +108,23 @@ export default function ScannerPage() {
 
   const addToPantry = async () => {
     if (!product) return;
-    await fetch(apiUrl("/api/pantry"), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        user_id: 1,
-        ingredient_id: product.id,
-        quantity: 1,
-        unit: "pièce",
-      }),
-    });
-    setStatus("added");
+    try {
+      await fetch(apiUrl("/api/pantry"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          ingredient_id: product.id,
+          quantity: 1,
+          unit: "pièce",
+        }),
+      });
+      setStatus("added");
+    } catch (err) {
+      console.error("Failed to add to pantry:", err);
+      setStatus("error");
+      setErrorMsg("Erreur lors de l'ajout");
+    }
   };
 
   useEffect(() => {
@@ -110,6 +134,50 @@ export default function ScannerPage() {
       }
     };
   }, []);
+
+  // Recherche d'ingrédients par nom
+  useEffect(() => {
+    if (searchQuery.length >= 2) {
+      const timer = setTimeout(async () => {
+        setIsSearching(true);
+        try {
+          const res = await fetch(apiUrl(`/api/ingredients?search=${encodeURIComponent(searchQuery)}`));
+          const data = await res.json();
+          setSearchResults(Array.isArray(data) ? data : []);
+        } catch {
+          setSearchResults([]);
+        }
+        setIsSearching(false);
+      }, 300);
+      return () => clearTimeout(timer);
+    } else {
+      setSearchResults([]);
+    }
+  }, [searchQuery]);
+
+  const addIngredientToPantry = async (ingredient: Ingredient) => {
+    try {
+      await fetch(apiUrl("/api/pantry"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          ingredient_id: ingredient.id,
+          quantity: 1,
+          unit: ingredient.unit || "pièce",
+        }),
+      });
+      setSelectedIngredient(ingredient);
+      setStatus("added");
+      setSearchQuery("");
+      setSearchResults([]);
+      setShowSearch(false);
+    } catch (err) {
+      console.error("Failed to add ingredient:", err);
+      setStatus("error");
+      setErrorMsg("Erreur lors de l'ajout");
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
@@ -173,6 +241,82 @@ export default function ScannerPage() {
                 </button>
               </div>
             )}
+
+            {/* Séparateur */}
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-200"></div>
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-4 bg-gray-50 text-gray-500">ou</span>
+              </div>
+            </div>
+
+            {/* Recherche par nom */}
+            <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+              <div className="flex items-center gap-2 mb-3">
+                <Search size={18} className="text-primary-500" />
+                <span className="font-medium text-gray-700 text-sm">Rechercher un ingrédient</span>
+              </div>
+              <div className="relative">
+                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => { setSearchQuery(e.target.value); setShowSearch(true); }}
+                  onFocus={() => setShowSearch(true)}
+                  placeholder="Tomate, poulet, riz..."
+                  className="w-full pl-9 pr-4 py-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none transition-all"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => { setSearchQuery(""); setSearchResults([]); }}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 p-1"
+                  >
+                    <X size={16} />
+                  </button>
+                )}
+              </div>
+
+              {/* Résultats de recherche */}
+              {showSearch && (searchResults.length > 0 || isSearching) && (
+                <div className="mt-2 max-h-64 overflow-y-auto rounded-xl border border-gray-100">
+                  {isSearching ? (
+                    <div className="p-4 text-center">
+                      <div className="animate-spin w-5 h-5 border-2 border-primary-500 border-t-transparent rounded-full mx-auto" />
+                      <p className="text-xs text-gray-500 mt-2">Recherche...</p>
+                    </div>
+                  ) : (
+                    searchResults.map((ingredient) => (
+                      <button
+                        key={ingredient.id}
+                        onClick={() => addIngredientToPantry(ingredient)}
+                        className="w-full flex items-center justify-between p-3 hover:bg-primary-50 active:bg-primary-100 border-b border-gray-50 last:border-0 transition-colors touch-target"
+                      >
+                        <div className="text-left">
+                          <p className="font-medium text-sm text-gray-900">{ingredient.name}</p>
+                          <p className="text-xs text-gray-500">
+                            {ingredient.calories} kcal/100g
+                            {ingredient.category && ` · ${ingredient.category}`}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-primary-600 font-medium">Ajouter</span>
+                          <Plus size={18} className="text-primary-500" />
+                        </div>
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
+
+              {showSearch && searchQuery.length >= 2 && searchResults.length === 0 && !isSearching && (
+                <div className="mt-2 p-4 text-center bg-gray-50 rounded-xl">
+                  <p className="text-sm text-gray-500">Aucun ingrédient trouvé</p>
+                  <p className="text-xs text-gray-400 mt-1">Essayez un autre terme</p>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -262,10 +406,12 @@ export default function ScannerPage() {
         )}
 
         {/* Added confirmation */}
-        {status === "added" && product && (
+        {status === "added" && (product || selectedIngredient) && (
           <div className="bg-primary-50 rounded-xl p-6 text-center">
             <Check size={48} className="mx-auto text-primary-500" />
-            <p className="mt-2 font-bold text-primary-700">{product.name}</p>
+            <p className="mt-2 font-bold text-primary-700">
+              {product?.name || selectedIngredient?.name}
+            </p>
             <p className="text-sm text-primary-500 mt-1">
               Ajouté à votre garde-manger
             </p>
@@ -273,11 +419,13 @@ export default function ScannerPage() {
               onClick={() => {
                 setStatus("idle");
                 setProduct(null);
+                setSelectedIngredient(null);
                 setManualBarcode("");
+                setSearchQuery("");
               }}
-              className="mt-4 bg-primary-500 text-white px-6 py-2 rounded-lg text-sm font-medium"
+              className="mt-4 bg-primary-500 text-white px-6 py-3 rounded-xl text-sm font-medium min-h-[48px] touch-target"
             >
-              Scanner un autre produit
+              Ajouter un autre aliment
             </button>
           </div>
         )}

@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const authUser = await getAuthUser();
+    const authUser = await getAuthUser(request);
     if (!authUser) return NextResponse.json(UNAUTHENTICATED_RESPONSE, { status: 401 });
     const userId = authUser.id;
     const maxMissing = Math.min(Math.max(parseInt(searchParams.get("maxMissing") || "0") || 0, 0), 20);

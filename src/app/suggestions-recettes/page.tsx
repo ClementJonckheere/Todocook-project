@@ -43,13 +43,27 @@ function SuggestionsContent() {
 
   const loadRecipes = async (currentOffset: number, currentFilter: number) => {
     setLoading(true);
-    const res = await fetch(
-      apiUrl(`/api/suggestions?userId=1&maxMissing=${currentFilter}&offset=${currentOffset}`)
-    );
-    const data = await res.json();
-    setRecipes(data.recipes);
-    setHasMore(data.hasMore);
-    setTotal(data.total);
+    try {
+      const res = await fetch(
+        apiUrl(`/api/suggestions?maxMissing=${currentFilter}&offset=${currentOffset}`),
+        { credentials: "include" }
+      );
+      if (res.ok) {
+        const data = await res.json();
+        setRecipes(Array.isArray(data.recipes) ? data.recipes : []);
+        setHasMore(data.hasMore || false);
+        setTotal(data.total || 0);
+      } else {
+        setRecipes([]);
+        setHasMore(false);
+        setTotal(0);
+      }
+    } catch (err) {
+      console.error("Failed to load recipes:", err);
+      setRecipes([]);
+      setHasMore(false);
+      setTotal(0);
+    }
     setLoading(false);
   };
 
@@ -73,8 +87,11 @@ function SuggestionsContent() {
       {/* Header */}
       <div className="bg-white px-4 pt-12 pb-4 shadow-sm">
         <div className="flex items-center gap-3 mb-3">
-          <button onClick={() => router.back()} className="text-gray-600">
-            <ArrowLeft size={22} />
+          <button
+            onClick={() => router.back()}
+            className="text-gray-600 p-2 -ml-2 rounded-xl active:bg-gray-100 touch-target min-w-[44px] min-h-[44px] flex items-center justify-center"
+          >
+            <ArrowLeft size={24} />
           </button>
           <div>
             <h1 className="text-xl font-bold text-gray-900">Suggestions</h1>
@@ -93,10 +110,10 @@ function SuggestionsContent() {
                   setFilter(n);
                   setOffset(0);
                 }}
-                className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
+                className={`flex-1 py-3 rounded-xl text-sm font-medium transition-colors min-h-[48px] touch-target ${
                   filter === n
                     ? "bg-primary-500 text-white"
-                    : "bg-gray-100 text-gray-600"
+                    : "bg-gray-100 text-gray-600 active:bg-gray-200"
                 }`}
               >
                 {n}
@@ -184,16 +201,16 @@ function SuggestionsContent() {
               {hasMore ? (
                 <button
                   onClick={loadMore}
-                  className="flex-1 bg-primary-500 text-white py-3 rounded-xl font-medium"
+                  className="flex-1 bg-primary-500 text-white py-4 rounded-xl font-medium min-h-[52px] touch-target active:bg-primary-600 transition-colors"
                 >
                   Voir plus de recettes
                 </button>
               ) : (
                 <button
                   onClick={reload}
-                  className="flex-1 bg-white text-gray-700 py-3 rounded-xl font-medium border border-gray-200 flex items-center justify-center gap-2"
+                  className="flex-1 bg-white text-gray-700 py-4 rounded-xl font-medium border border-gray-200 flex items-center justify-center gap-2 min-h-[52px] touch-target active:bg-gray-50 transition-colors"
                 >
-                  <RefreshCw size={16} />
+                  <RefreshCw size={18} />
                   Recharger
                 </button>
               )}
