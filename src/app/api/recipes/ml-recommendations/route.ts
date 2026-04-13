@@ -75,9 +75,9 @@ export async function GET(request: NextRequest) {
     if (shouldRefreshRecommender()) {
       // Fetch all recipes with ingredients
       const { rows: recipeRows } = await query(
-        `SELECT r.*, ARRAY_AGG(ri.ingredient_id) as ingredient_ids
+        `SELECT r.*, ARRAY_REMOVE(ARRAY_AGG(ri.ingredient_id), NULL) as ingredient_ids
          FROM recipes r
-         JOIN recipe_ingredients ri ON r.id = ri.recipe_id
+         LEFT JOIN recipe_ingredients ri ON r.id = ri.recipe_id
          WHERE r.is_public = true OR r.created_by = $1
          GROUP BY r.id`,
         [userId]
@@ -293,9 +293,9 @@ export async function POST(request: NextRequest) {
     // Initialize if needed
     if (shouldRefreshRecommender()) {
       const { rows: recipeRows } = await query(
-        `SELECT r.*, ARRAY_AGG(ri.ingredient_id) as ingredient_ids
+        `SELECT r.*, ARRAY_REMOVE(ARRAY_AGG(ri.ingredient_id), NULL) as ingredient_ids
          FROM recipes r
-         JOIN recipe_ingredients ri ON r.id = ri.recipe_id
+         LEFT JOIN recipe_ingredients ri ON r.id = ri.recipe_id
          WHERE r.is_public = true OR r.created_by = $1
          GROUP BY r.id`,
         [userId]

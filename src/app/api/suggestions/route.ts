@@ -21,9 +21,9 @@ export async function GET(request: NextRequest) {
     const pantryIds = new Set(pantryItems.map((p: any) => p.ingredient_id));
 
     const { rows: recipes } = await query(
-      `SELECT r.*, STRING_AGG(ri.ingredient_id::text, ',') as ingredient_ids
+      `SELECT r.*, STRING_AGG(ri.ingredient_id::text, ',') FILTER (WHERE ri.ingredient_id IS NOT NULL) as ingredient_ids
        FROM recipes r
-       JOIN recipe_ingredients ri ON r.id = ri.recipe_id
+       LEFT JOIN recipe_ingredients ri ON r.id = ri.recipe_id
        WHERE r.is_public = true OR r.created_by = $1
        GROUP BY r.id`,
       [userId]
@@ -31,8 +31,8 @@ export async function GET(request: NextRequest) {
 
     const scoredRecipes = recipes.map((recipe: any) => {
       const ingredientIds = recipe.ingredient_ids
-        .split(",")
-        .map((id: string) => parseInt(id));
+        ? recipe.ingredient_ids.split(",").map((id: string) => parseInt(id)).filter((id: number) => !isNaN(id))
+        : [];
       const totalIngredients = ingredientIds.length;
       const missingCount = ingredientIds.filter(
         (id: number) => !pantryIds.has(id)

@@ -84,9 +84,9 @@ export async function GET(request: NextRequest) {
 
     // Get all recipes with their ingredients
     const { rows: recipes } = await query(
-      `SELECT r.*, STRING_AGG(ri.ingredient_id::text, ',') as ingredient_ids
+      `SELECT r.*, STRING_AGG(ri.ingredient_id::text, ',') FILTER (WHERE ri.ingredient_id IS NOT NULL) as ingredient_ids
        FROM recipes r
-       JOIN recipe_ingredients ri ON r.id = ri.recipe_id
+       LEFT JOIN recipe_ingredients ri ON r.id = ri.recipe_id
        WHERE r.is_public = true OR r.created_by = $1
        GROUP BY r.id`,
       [userId]
@@ -121,8 +121,8 @@ export async function GET(request: NextRequest) {
 
     for (const recipe of recipes) {
       const ingredientIds = recipe.ingredient_ids
-        .split(",")
-        .map((id: string) => parseInt(id));
+        ? recipe.ingredient_ids.split(",").map((id: string) => parseInt(id)).filter((id: number) => !isNaN(id))
+        : [];
       const totalIngredients = ingredientIds.length;
       const missingIngredients = ingredientIds.filter((id: number) => !pantryIds.has(id));
       const missingCount = missingIngredients.length;
@@ -144,7 +144,10 @@ export async function GET(request: NextRequest) {
       }
 
       // Calculate pantry score (0-100): higher = more ingredients available
-      const pantryScore = Math.round(((totalIngredients - missingCount) / totalIngredients) * 100);
+      // Recipes with no ingredients are considered 100% available
+      const pantryScore = totalIngredients > 0
+        ? Math.round(((totalIngredients - missingCount) / totalIngredients) * 100)
+        : 100;
 
       // Calculate nutrition score (0-100)
       // Based on how well the recipe fits the user's macro targets per meal
