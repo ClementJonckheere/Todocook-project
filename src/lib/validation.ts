@@ -19,8 +19,10 @@ export function validateEmail(email: string): boolean {
 
 export function validatePassword(password: string): ValidationError[] {
   const errors: ValidationError[] = [];
-  if (!password || password.length < 6) {
-    errors.push({ field: "password", message: "Le mot de passe doit contenir au moins 6 caractères" });
+  if (!password || password.length < 8) {
+    errors.push({ field: "password", message: "Le mot de passe doit contenir au moins 8 caractères" });
+  } else if (password.length > 200) {
+    errors.push({ field: "password", message: "Le mot de passe ne doit pas dépasser 200 caractères" });
   }
   return errors;
 }

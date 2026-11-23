@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/lib/db";
+import { getAuthUser, UNAUTHENTICATED_RESPONSE } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   try {
+    if (!(await getAuthUser())) return NextResponse.json(UNAUTHENTICATED_RESPONSE, { status: 401 });
     const { searchParams } = new URL(request.url);
     const barcode = searchParams.get("barcode");
 

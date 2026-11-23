@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/lib/db";
-import { validateRequired } from "@/lib/validation";
+import { validateMaxLength, validateRequired } from "@/lib/validation";
+import { getAuthUser, UNAUTHENTICATED_RESPONSE } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   try {
+    if (!(await getAuthUser())) return NextResponse.json(UNAUTHENTICATED_RESPONSE, { status: 401 });
     const { searchParams } = new URL(request.url);
     const search = searchParams.get("search");
 
@@ -26,12 +28,32 @@ export async function GET(request: NextRequest) {
   }
 }
 
+const NUTRIENTS = ["calories", "protein", "carbs", "fat", "fiber"] as const;
+
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
+    if (!(await getAuthUser())) return NextResponse.json(UNAUTHENTICATED_RESPONSE, { status: 401 });
+    const body = await request.json().catch(() => ({}));
     const { name, barcode, calories, protein, carbs, fat, fiber, unit, image_url, brand, category } = body;
 
-    const errors = validateRequired({ name }, ["name"]);
+    const errors = [
+      ...validateRequired({ name }, ["name"]),
+      ...validateMaxLength(name, "name", 200),
+      ...validateMaxLength(brand, "brand", 200),
+      ...validateMaxLength(category, "category", 100),
+      ...validateMaxLength(unit, "unit", 20),
+      ...validateMaxLength(barcode, "barcode", 50),
+      ...validateMaxLength(image_url, "image_url", 2000),
+    ];
+    for (const field of NUTRIENTS) {
+      const value = body[field];
+      if (value != null && (typeof value !== "number" || !Number.isFinite(value) || value < 0 || value > 1000)) {
+        errors.push({ field, message: `${field} doit être un nombre entre 0 et 1000 (pour 100 g)` });
+      }
+    }
+    if (image_url && !/^https:\/\//.test(image_url)) {
+      errors.push({ field: "image_url", message: "L'image doit être une URL https" });
+    }
     if (errors.length > 0) {
       return NextResponse.json({ errors }, { status: 400 });
     }

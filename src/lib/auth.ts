@@ -1,89 +1,86 @@
-import { cookies } from "next/headers";
-import { query } from "./db";
 import crypto from "crypto";
+import { cookies, headers } from "next/headers";
+import { query } from "./db";
 
-const SESSION_SECRET = process.env.SESSION_SECRET || "todocook-dev-secret-change-in-production";
-const SESSION_COOKIE = "todocook-session";
+export { hashPassword, verifyPassword } from "./password";
 
-export function hashPassword(password: string): string {
-  const salt = crypto.randomBytes(16).toString("hex");
-  const hash = crypto.scryptSync(password, salt, 64).toString("hex");
-  return `${salt}:${hash}`;
+export const SESSION_COOKIE = "todocook-session";
+export const SESSION_TTL_SECONDS = 7 * 24 * 60 * 60;
+
+export type AuthUser = { id: number; email: string; first_name: string; last_name: string };
+export type SessionClient = "web" | "mobile";
+
+/** Empreinte stockée en base : le token en clair n'est connu que du client. */
+export function hashToken(token: string): string {
+  return crypto.createHash("sha256").update(token).digest("hex");
 }
 
-export function verifyPassword(password: string, stored: string): boolean {
-  const [salt, hash] = stored.split(":");
-  const verify = crypto.scryptSync(password, salt, 64).toString("hex");
-  return hash === verify;
+/** Le token de session : soit le cookie (web), soit l'en-tête `Authorization: Bearer` (application mobile). */
+export function readSessionToken(authorization: string | null, cookie: string | undefined): string | null {
+  const match = authorization?.match(/^Bearer\s+([A-Za-z0-9_-]{20,200})$/);
+  if (match) return match[1];
+  return cookie || null;
 }
 
-function signToken(payload: string): string {
-  const hmac = crypto.createHmac("sha256", SESSION_SECRET);
-  hmac.update(payload);
-  return `${payload}.${hmac.digest("hex")}`;
-}
-
-function verifyToken(token: string): string | null {
-  const lastDot = token.lastIndexOf(".");
-  if (lastDot === -1) return null;
-  const payload = token.substring(0, lastDot);
-  const signature = token.substring(lastDot + 1);
-  const hmac = crypto.createHmac("sha256", SESSION_SECRET);
-  hmac.update(payload);
-  if (hmac.digest("hex") !== signature) return null;
-  return payload;
-}
-
-export function createSession(userId: number): string {
-  const payload = JSON.stringify({ userId, exp: Date.now() + 7 * 24 * 60 * 60 * 1000 });
-  return signToken(Buffer.from(payload).toString("base64"));
+/** Crée une session en base et renvoie le token (opaque, aléatoire, 256 bits). */
+export async function createSession(userId: number, client: SessionClient = "web"): Promise<string> {
+  const token = crypto.randomBytes(32).toString("base64url");
+  await query(
+    `INSERT INTO sessions (token_hash, user_id, client, expires_at)
+     VALUES ($1, $2, $3, NOW() + make_interval(secs => $4))`,
+    [hashToken(token), userId, client, SESSION_TTL_SECONDS]
+  );
+  // Ménage opportuniste des sessions expirées
+  await query("DELETE FROM sessions WHERE expires_at < NOW() - INTERVAL '1 day'");
+  return token;
 }
 
 export function setSessionCookie(token: string) {
-  const cookieStore = cookies();
-  cookieStore.set(SESSION_COOKIE, token, {
+  cookies().set(SESSION_COOKIE, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
-    maxAge: 7 * 24 * 60 * 60,
+    maxAge: SESSION_TTL_SECONDS,
     path: "/",
   });
 }
 
 export function clearSessionCookie() {
-  const cookieStore = cookies();
-  cookieStore.delete(SESSION_COOKIE);
+  cookies().delete(SESSION_COOKIE);
 }
 
-export async function getAuthUser(request?: Request): Promise<{ id: number; email: string; first_name: string; last_name: string } | null> {
-  // Mobile dev bypass: check for X-Mobile-Dev header with user ID
-  if (request) {
-    const mobileDevUserId = request.headers.get("X-Mobile-Dev-User");
-    if (mobileDevUserId && process.env.NODE_ENV !== "production") {
-      const { rows } = await query("SELECT id, email, first_name, last_name FROM users WHERE id = $1", [mobileDevUserId]);
-      return rows[0] || null;
-    }
-  }
+function currentToken(): string | null {
+  return readSessionToken(headers().get("authorization"), cookies().get(SESSION_COOKIE)?.value);
+}
 
-  const cookieStore = cookies();
-  const token = cookieStore.get(SESSION_COOKIE)?.value;
+/**
+ * Utilisateur de la session courante, ou null.
+ * Le paramètre `request` est conservé pour compatibilité : la lecture passe par next/headers.
+ */
+export async function getAuthUser(_request?: Request): Promise<AuthUser | null> {
+  const token = currentToken();
   if (!token) return null;
-
-  const payload = verifyToken(token);
-  if (!payload) return null;
-
-  try {
-    const data = JSON.parse(Buffer.from(payload, "base64").toString());
-    if (data.exp < Date.now()) return null;
-
-    const { rows } = await query("SELECT id, email, first_name, last_name FROM users WHERE id = $1", [data.userId]);
-    return rows[0] || null;
-  } catch {
-    return null;
-  }
+  const { rows } = await query<AuthUser>(
+    `SELECT u.id, u.email, u.first_name, u.last_name
+     FROM sessions s JOIN users u ON u.id = s.user_id
+     WHERE s.token_hash = $1 AND s.expires_at > NOW()`,
+    [hashToken(token)]
+  );
+  return rows[0] ?? null;
 }
 
-export async function requireAuth(): Promise<{ id: number; email: string; first_name: string; last_name: string }> {
+/** Révoque la session courante (déconnexion de cet appareil uniquement). */
+export async function revokeCurrentSession(): Promise<void> {
+  const token = currentToken();
+  if (token) await query("DELETE FROM sessions WHERE token_hash = $1", [hashToken(token)]);
+}
+
+/** Le client mobile demande à recevoir le token dans la réponse (il n'utilise pas les cookies). */
+export function sessionClientFrom(request: Request): SessionClient {
+  return request.headers.get("x-client") === "mobile" ? "mobile" : "web";
+}
+
+export async function requireAuth(): Promise<AuthUser> {
   const user = await getAuthUser();
   if (!user) throw new Error("Non authentifié");
   return user;
