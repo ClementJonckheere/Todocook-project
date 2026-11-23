@@ -69,7 +69,7 @@ export default function ProfileScreen() {
       setUser(userData);
       setLogs(logsData);
       const mealsArray = Array.isArray(mealsData) ? mealsData : [];
-      setTodayCalories(mealsArray.reduce((sum: number, m: { calories?: number }) => sum + (m.calories || 0), 0));
+      setTodayCalories(mealsArray.reduce((sum: number, m: { calories?: number; consumed_portions: number }) => sum + (m.calories || 0) * m.consumed_portions, 0));
       setForm({
         age: String(userData.age || ""),
         weight: String(userData.weight || ""),

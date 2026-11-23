@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
     const userId = authUser.id;
 
     const { rows } = await query(
-      `SELECT DISTINCT i.id, i.name, i.category, ri.quantity, ri.unit, r.name as recipe_name
+      `SELECT DISTINCT i.id, i.name, i.category, ri.quantity / GREATEST(r.servings, 1) AS quantity, ri.unit, r.name as recipe_name
        FROM meal_plans mp
        JOIN recipes r ON mp.recipe_id = r.id
        JOIN recipe_ingredients ri ON r.id = ri.recipe_id

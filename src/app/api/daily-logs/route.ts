@@ -15,10 +15,9 @@ export async function GET(request: NextRequest) {
     const days = Math.min(Math.max(parseInt(searchParams.get("days") || "30") || 30, 1), 365);
 
     const { rows } = await query(
-      `SELECT * FROM daily_logs
-       WHERE user_id = $1
-       ORDER BY date DESC
-       LIMIT $2`,
+      `SELECT * FROM consumed_daily_totals
+       WHERE user_id = $1 AND date BETWEEN (CURRENT_DATE - ($2::integer - 1))::text AND CURRENT_DATE::text
+       ORDER BY date DESC`,
       [userId, days]
     );
 

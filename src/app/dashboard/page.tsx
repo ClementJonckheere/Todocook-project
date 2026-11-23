@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Search, Plus, ChevronLeft, ChevronRight, X, Flame, Heart, Star, ClipboardList, BookOpen, Sparkles, ShoppingCart, Dumbbell } from "lucide-react";
+import { Search, Plus, ChevronLeft, ChevronRight, X, Flame, Heart, Star, ClipboardList, BookOpen, Sparkles, ShoppingCart } from "lucide-react";
 import Link from "next/link";
 import { format, addDays, startOfWeek } from "date-fns";
 import { fr } from "date-fns/locale";
+import { MealConsumption } from "@/components/MealConsumption";
 import { apiUrl } from "@/lib/api";
 
 interface User {
@@ -15,6 +16,7 @@ interface User {
 }
 
 interface Recipe {
+  servings: number;
   id: number;
   name: string;
   calories: number;
@@ -29,6 +31,7 @@ interface Recipe {
 }
 
 interface MealPlan {
+  consumed_portions: number;
   id: number;
   recipe_id: number;
   recipe_name: string;
@@ -77,7 +80,7 @@ export default function DashboardPage() {
       setUser(userData);
       setTodayMeals(Array.isArray(mealsData) ? mealsData : []);
       setTodayCalories(
-        (Array.isArray(mealsData) ? mealsData : []).reduce((sum: number, m: MealPlan) => sum + (m.calories || 0), 0)
+        (Array.isArray(mealsData) ? mealsData : []).reduce((sum: number, m: MealPlan) => sum + (m.calories || 0) * m.consumed_portions, 0)
       );
     } catch (err) {
       console.error("Failed to load today's data:", err);
@@ -187,13 +190,6 @@ export default function DashboardPage() {
           </div>
           <div className="flex items-center gap-2">
             <Link
-              href="/sport"
-              className="p-2.5 bg-gradient-to-br from-blue-500 to-purple-500 rounded-2xl shadow-card hover:shadow-card-hover transition-all"
-              title="Espace Musculation"
-            >
-              <Dumbbell size={20} className="text-white" />
-            </Link>
-            <Link
               href="/pense-bete"
               className="p-2.5 bg-white dark:bg-gray-800 rounded-2xl shadow-card hover:shadow-card-hover transition-all"
               title="Pense-bête courses"
@@ -219,7 +215,7 @@ export default function DashboardPage() {
               <div className="p-1.5 bg-orange-50 dark:bg-orange-900/30 rounded-lg">
                 <Flame size={16} className="text-orange-500" />
               </div>
-              <span className="text-sm font-medium text-gray-600 dark:text-gray-300">Calories aujourd&apos;hui</span>
+              <span className="text-sm font-medium text-gray-600 dark:text-gray-300">Calories consommées aujourd’hui</span>
             </div>
             <div className="text-right">
               <span className="text-lg font-bold text-gray-900 dark:text-white">{Math.round(todayCalories)}</span>
@@ -289,7 +285,7 @@ export default function DashboardPage() {
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">{recipe.calories} kcal</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">{Math.round(recipe.calories / Math.max(recipe.servings, 1))} kcal / portion</p>
                 </button>
                 <div className="flex items-center gap-2">
                   <button onClick={() => toggleFavorite(recipe.id, recipe.is_favorite)} className="p-1">
@@ -364,7 +360,7 @@ export default function DashboardPage() {
               <span className="text-2xl">🍽️</span>
             </div>
             <p className="text-gray-600 dark:text-gray-400 text-sm font-medium">Aucun repas prévu</p>
-            <p className="text-gray-400 dark:text-gray-500 text-xs mt-1">Recherchez une recette pour commencer</p>
+            <Link href="/suggestions-recettes" className="mt-3 inline-block rounded-lg bg-primary-600 px-4 py-2 font-medium text-white">Trouver mon dîner</Link>
           </div>
         ) : (
           <div className="space-y-2">
@@ -379,10 +375,11 @@ export default function DashboardPage() {
                     <div>
                       <p className={`text-[11px] font-semibold uppercase tracking-wide ${config.color}`}>{meal.meal_type.replace("-", " ")}</p>
                       <p className="font-semibold text-gray-900 dark:text-white text-sm">{meal.recipe_name}</p>
-                      <p className="text-xs text-gray-400 dark:text-gray-500">{meal.calories} kcal</p>
+                      <p className="text-xs text-gray-400 dark:text-gray-500">{Math.round(meal.calories)} kcal / portion</p>
+                      <MealConsumption key={meal.consumed_portions} id={meal.id} portions={meal.consumed_portions} onChange={loadTodayData} />
                     </div>
                   </div>
-                  <button onClick={() => removeMeal(meal.id)} className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-all">
+                  <button aria-label="Supprimer le repas" disabled={meal.consumed_portions > 0} onClick={() => removeMeal(meal.id)} className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-all">
                     <X size={16} />
                   </button>
                 </div>

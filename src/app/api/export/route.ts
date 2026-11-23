@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
 
     if (type === "all" || type === "meal-plans") {
       const { rows: mealPlans } = await query(
-        `SELECT mp.date, mp.meal_type, r.name as recipe_name, r.calories
+        `SELECT mp.date, mp.meal_type, mp.consumed_portions, mp.nutrition_per_portion, r.name as recipe_name, r.calories
          FROM meal_plans mp
          JOIN recipes r ON mp.recipe_id = r.id
          WHERE mp.user_id = $1
@@ -65,11 +65,15 @@ export async function GET(request: NextRequest) {
         `SELECT * FROM daily_logs WHERE user_id = $1 ORDER BY date`,
         [userId]
       );
-      exportData.daily_logs = logs;
+      exportData.legacy_daily_logs = logs;
+      const confirmed = await query(
+        "SELECT * FROM consumed_daily_totals WHERE user_id = $1 ORDER BY date", [userId]
+      );
+      exportData.daily_logs = confirmed.rows;
     }
 
     exportData.exported_at = new Date().toISOString();
-    exportData.version = "1.0";
+    exportData.version = "1.1";
 
     return NextResponse.json(exportData);
   } catch (error) {

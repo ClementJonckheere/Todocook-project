@@ -60,6 +60,12 @@ export async function DELETE(_: Request, { params }: { params: { id: string } })
     const authUser = await getAuthUser();
     if (!authUser) return NextResponse.json(UNAUTHENTICATED_RESPONSE, { status: 401 });
 
+    const planned = await query(
+      "SELECT 1 FROM meal_plans mp JOIN recipes r ON r.id = mp.recipe_id WHERE r.id = $1 AND r.created_by = $2 LIMIT 1",
+      [params.id, authUser.id]
+    );
+    if (planned.rowCount) return NextResponse.json({ error: "Cette recette figure dans le planning ou le journal." }, { status: 409 });
+
     const result = await query("DELETE FROM recipes WHERE id = $1 AND created_by = $2", [params.id, authUser.id]);
     if (result.rowCount === 0) {
       return NextResponse.json({ error: "Recette non trouvée ou non autorisé" }, { status: 404 });

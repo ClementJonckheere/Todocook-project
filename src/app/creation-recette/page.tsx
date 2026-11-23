@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Search, Plus, X, Minus, Save } from "lucide-react";
+import { gramsPerUnit } from "@/lib/recipe-portions";
 import { apiUrl } from "@/lib/api";
 
 interface Ingredient {
@@ -34,6 +35,7 @@ export default function CreationRecettePage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<Ingredient[]>([]);
   const [showSearch, setShowSearch] = useState(false);
+  const [saveError, setSaveError] = useState("");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -53,7 +55,7 @@ export default function CreationRecettePage() {
     if (recipeIngredients.find((ri) => ri.ingredient.id === ingredient.id)) return;
     setRecipeIngredients([
       ...recipeIngredients,
-      { ingredient, quantity: 100, unit: ingredient.unit },
+      { ingredient, quantity: ingredient.unit === "pièce" && gramsPerUnit(ingredient, "pièce") ? 1 : 100, unit: gramsPerUnit(ingredient, ingredient.unit) ? ingredient.unit : "g" },
     ]);
     setSearchQuery("");
     setShowSearch(false);
@@ -71,49 +73,49 @@ export default function CreationRecettePage() {
     );
   };
 
-  // Calculate totals
-  const totalCalories = recipeIngredients.reduce(
-    (sum, ri) => sum + (ri.ingredient.calories * ri.quantity) / 100,
-    0
-  );
-  const totalProtein = recipeIngredients.reduce(
-    (sum, ri) => sum + (ri.ingredient.protein * ri.quantity) / 100,
-    0
-  );
-  const totalCarbs = recipeIngredients.reduce(
-    (sum, ri) => sum + (ri.ingredient.carbs * ri.quantity) / 100,
-    0
-  );
-  const totalFat = recipeIngredients.reduce(
-    (sum, ri) => sum + (ri.ingredient.fat * ri.quantity) / 100,
-    0
-  );
+  const totals = { calories: 0, protein: 0, carbs: 0, fat: 0 };
+  for (const { ingredient, unit, quantity } of recipeIngredients) {
+    const factor = quantity * (gramsPerUnit(ingredient, unit) ?? 0) / 100;
+    for (const key of ["calories", "protein", "carbs", "fat"] as const) {
+      totals[key] += ingredient[key] * factor;
+    }
+  }
+  const portionCount = Math.max(1, Number(servings) || 1);
 
   const saveRecipe = async () => {
     if (!name || recipeIngredients.length === 0) return;
     setSaving(true);
 
-    await fetch(apiUrl("/api/recipes"), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name,
-        description,
-        instructions,
-        prep_time: prepTime ? parseInt(prepTime) : null,
-        cook_time: cookTime ? parseInt(cookTime) : null,
-        servings: parseInt(servings) || 2,
-        is_public: false,
-        created_by: 1,
-        ingredients: recipeIngredients.map((ri) => ({
-          ingredient_id: ri.ingredient.id,
-          quantity: ri.quantity,
-          unit: ri.unit,
-        })),
-      }),
-    });
-
-    router.push("/profile");
+    setSaveError("");
+    try {
+      const response = await fetch(apiUrl("/api/recipes"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name,
+          description,
+          instructions,
+          prep_time: prepTime ? parseInt(prepTime) : null,
+          cook_time: cookTime ? parseInt(cookTime) : null,
+          servings: Number(servings),
+          is_public: false,
+          ingredients: recipeIngredients.map((ri) => ({
+            ingredient_id: ri.ingredient.id,
+            quantity: ri.quantity,
+            unit: ri.unit,
+          })),
+        }),
+      });
+      if (!response.ok) {
+        const result = await response.json();
+        throw new Error(result.error || "Vérifie les quantités et les portions.");
+      }
+      router.push("/profile");
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : "Enregistrement impossible.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -242,12 +244,13 @@ export default function CreationRecettePage() {
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-gray-900 truncate">{ri.ingredient.name}</p>
                     <p className="text-[10px] text-gray-400">
-                      {Math.round((ri.ingredient.calories * ri.quantity) / 100)} kcal
+                      {ri.unit !== "g" && `≈ ${Number((ri.quantity * (gramsPerUnit(ri.ingredient, ri.unit) ?? 0)).toFixed(1))} g · `}
+                      {Math.round((ri.ingredient.calories * ri.quantity * (gramsPerUnit(ri.ingredient, ri.unit) ?? 0)) / 100)} kcal
                     </p>
                   </div>
                   <div className="flex items-center gap-1">
                     <button
-                      onClick={() => updateQuantity(ri.ingredient.id, ri.quantity - 10)}
+                      onClick={() => updateQuantity(ri.ingredient.id, ri.quantity - (ri.unit === "pièce" ? 1 : 10))}
                       className="w-7 h-7 rounded bg-gray-200 flex items-center justify-center"
                     >
                       <Minus size={14} />
@@ -256,13 +259,22 @@ export default function CreationRecettePage() {
                       type="number"
                       value={ri.quantity}
                       onChange={(e) =>
-                        updateQuantity(ri.ingredient.id, parseInt(e.target.value) || 0)
+                        updateQuantity(ri.ingredient.id, Number(e.target.value) || 0)
                       }
                       className="w-14 text-center text-sm border rounded py-1"
                     />
-                    <span className="text-xs text-gray-500 w-4">{ri.unit}</span>
+                    {gramsPerUnit(ri.ingredient, ri.ingredient.unit) && ri.ingredient.unit !== "g" ? (
+                      <select aria-label={`Unité pour ${ri.ingredient.name}`} value={ri.unit} onChange={e => {
+                        const unit = e.target.value;
+                        const grams = ri.quantity * (gramsPerUnit(ri.ingredient, ri.unit) ?? 1);
+                        const quantity = Number((grams / (gramsPerUnit(ri.ingredient, unit) ?? 1)).toFixed(2));
+                        setRecipeIngredients(items => items.map(item => item === ri ? { ...ri, unit, quantity } : item));
+                      }}>
+                        <option value={ri.ingredient.unit}>{ri.ingredient.unit}</option><option value="g">g</option>
+                      </select>
+                    ) : <span className="text-xs text-gray-500">{ri.unit}</span>}
                     <button
-                      onClick={() => updateQuantity(ri.ingredient.id, ri.quantity + 10)}
+                      onClick={() => updateQuantity(ri.ingredient.id, ri.quantity + (ri.unit === "pièce" ? 1 : 10))}
                       className="w-7 h-7 rounded bg-gray-200 flex items-center justify-center"
                     >
                       <Plus size={14} />
@@ -283,23 +295,24 @@ export default function CreationRecettePage() {
             </p>
           )}
 
-          {/* Nutritional summary */}
+          {recipeIngredients.length > 0 && Number(servings) > 0 && <p className="mt-4 font-medium">Par portion · {Math.round(totals.calories)} kcal pour la recette entière</p>}
+          {/* Nutritional summary per serving */}
           {recipeIngredients.length > 0 && (
             <div className="mt-3 pt-3 border-t grid grid-cols-4 gap-2 text-center">
               <div className="bg-orange-50 rounded-lg p-2">
-                <p className="text-sm font-bold text-orange-600">{Math.round(totalCalories)}</p>
+                <p className="text-sm font-bold text-orange-600">{Math.round(totals.calories / portionCount)}</p>
                 <p className="text-[10px] text-orange-400">kcal</p>
               </div>
               <div className="bg-red-50 rounded-lg p-2">
-                <p className="text-sm font-bold text-red-600">{Math.round(totalProtein)}g</p>
+                <p className="text-sm font-bold text-red-600">{Math.round(totals.protein / portionCount)}g</p>
                 <p className="text-[10px] text-red-400">Prot.</p>
               </div>
               <div className="bg-amber-50 rounded-lg p-2">
-                <p className="text-sm font-bold text-amber-600">{Math.round(totalCarbs)}g</p>
+                <p className="text-sm font-bold text-amber-600">{Math.round(totals.carbs / portionCount)}g</p>
                 <p className="text-[10px] text-amber-400">Gluc.</p>
               </div>
               <div className="bg-blue-50 rounded-lg p-2">
-                <p className="text-sm font-bold text-blue-600">{Math.round(totalFat)}g</p>
+                <p className="text-sm font-bold text-blue-600">{Math.round(totals.fat / portionCount)}g</p>
                 <p className="text-[10px] text-blue-400">Lip.</p>
               </div>
             </div>
@@ -319,6 +332,7 @@ export default function CreationRecettePage() {
         </div>
 
         {/* Save button */}
+        {saveError && <p role="alert" className="text-red-700">{saveError}</p>}
         <button
           onClick={saveRecipe}
           disabled={!name || recipeIngredients.length === 0 || saving}

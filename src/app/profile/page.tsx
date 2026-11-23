@@ -377,7 +377,7 @@ export default function ProfilePage() {
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-4">
           <div className="flex items-center gap-2 mb-4">
             <TrendingUp size={20} className="text-primary-600 dark:text-primary-400" />
-            <h2 className="font-bold text-gray-900 dark:text-white">Suivi nutritionnel (30 jours)</h2>
+            <h2 className="font-bold text-gray-900 dark:text-white">Consommation confirmée sur 30 jours</h2>
           </div>
           <div className="grid grid-cols-2 gap-3 mb-4">
             <div className="bg-orange-50 dark:bg-orange-900/20 rounded-lg p-3 flex items-center gap-3">

@@ -1,70 +1,40 @@
-const CACHE_NAME = "todocook-v1";
-const STATIC_ASSETS = [
-  "/dashboard",
-  "/scanner",
-  "/calendrier",
-  "/garde-manger",
-  "/profile",
-  "/manifest.json",
-];
+const CACHE_NAME = "todocook-v2";
+const STATIC_ASSETS = ["/manifest.json", "/icons/icon-192x192.png", "/offline.html"];
 
-// Install: cache static assets
 self.addEventListener("install", (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS))
-  );
-  self.skipWaiting();
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE_NAME);
+    await cache.addAll(STATIC_ASSETS);
+    await self.skipWaiting();
+  })());
 });
 
-// Activate: clean old caches
 self.addEventListener("activate", (event) => {
-  event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(
-        keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))
-      )
-    )
-  );
-  self.clients.claim();
+  event.waitUntil((async () => {
+    const keys = await caches.keys();
+    await Promise.all(keys.filter(key => key.startsWith("todocook-") && key !== CACHE_NAME)
+      .map(key => caches.delete(key)));
+    await self.clients.claim();
+  })());
 });
 
-// Fetch: network-first for API, cache-first for static
 self.addEventListener("fetch", (event) => {
   const { request } = event;
   const url = new URL(request.url);
-
-  // Skip non-GET requests
-  if (request.method !== "GET") return;
-
-  // API calls: network-first with cache fallback
-  if (url.pathname.startsWith("/api/")) {
-    event.respondWith(
-      fetch(request)
-        .then((response) => {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
-          return response;
-        })
-        .catch(() => caches.match(request))
-    );
+  if (request.method !== "GET" || url.origin !== self.location.origin) return;
+  if (request.mode === "navigate") {
+    event.respondWith(fetch(request).catch(() => caches.match("/offline.html")));
     return;
   }
+  if (!url.pathname.startsWith("/_next/static/") && !url.pathname.startsWith("/icons/") &&
+      !STATIC_ASSETS.includes(url.pathname)) return;
 
-  // Static assets: cache-first with network fallback
-  event.respondWith(
-    caches.match(request).then((cached) => {
-      if (cached) {
-        // Update cache in background
-        fetch(request).then((response) => {
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, response));
-        }).catch(() => {});
-        return cached;
-      }
-      return fetch(request).then((response) => {
-        const clone = response.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
-        return response;
-      });
-    })
-  );
+  event.respondWith((async () => {
+    const cache = await caches.open(CACHE_NAME);
+    const cached = await cache.match(request);
+    if (cached) return cached;
+    const response = await fetch(request);
+    if (response.ok && !response.redirected) await cache.put(request, response.clone());
+    return response;
+  })());
 });

@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, RefreshCw, AlertTriangle, ChefHat, Clock, Users, Flame } from "lucide-react";
+import { format } from "date-fns";
 import { apiUrl } from "@/lib/api";
 
 interface SuggestedRecipe {
@@ -32,7 +33,7 @@ export default function SuggestionsPage() {
 function SuggestionsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const maxMissing = parseInt(searchParams.get("maxMissing") || "0");
+  const maxMissing = parseInt(searchParams.get("maxMissing") || "-1");
 
   const [recipes, setRecipes] = useState<SuggestedRecipe[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,31 +42,48 @@ function SuggestionsContent() {
   const [total, setTotal] = useState(0);
   const [filter, setFilter] = useState(maxMissing);
 
-  const loadRecipes = async (currentOffset: number, currentFilter: number) => {
-    setLoading(true);
-    const res = await fetch(
-      apiUrl(`/api/suggestions?userId=1&maxMissing=${currentFilter}&offset=${currentOffset}`)
-    );
-    const data = await res.json();
-    setRecipes(data.recipes);
-    setHasMore(data.hasMore);
-    setTotal(data.total);
-    setLoading(false);
-  };
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [retry, setRetry] = useState(0);
 
   useEffect(() => {
-    loadRecipes(0, filter);
-  }, [filter]);
+    const controller = new AbortController();
+    async function loadRecipes() {
+      setLoading(true);
+      setError("");
+      try {
+        const response = await fetch(apiUrl(`/api/suggestions?maxMissing=${filter < 0 ? "all" : filter}&offset=${offset}`), { signal: controller.signal });
+        if (!response.ok) throw new Error();
+        const data = await response.json();
+        if (controller.signal.aborted) return;
+        setRecipes(previous => offset ? [...previous, ...data.recipes] : data.recipes);
+        setHasMore(data.hasMore);
+        setTotal(data.total);
+      } catch {
+        if (!controller.signal.aborted) setError("Impossible de charger les recettes.");
+      } finally {
+        if (!controller.signal.aborted) setLoading(false);
+      }
+    }
+    loadRecipes();
+    return () => controller.abort();
+  }, [filter, offset, retry]);
 
-  const loadMore = () => {
-    const newOffset = offset + 10;
-    setOffset(newOffset);
-    loadRecipes(newOffset, filter);
-  };
-
-  const reload = () => {
-    setOffset(0);
-    loadRecipes(0, filter);
+  const planDinner = async (recipeId: number) => {
+    setSaving(true);
+    setError("");
+    try {
+      const response = await fetch(apiUrl("/api/meal-plans"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ recipe_id: recipeId, date: format(new Date(), "yyyy-MM-dd"), meal_type: "diner" }),
+      });
+      if (!response.ok) throw new Error();
+      router.push("/dashboard");
+    } catch {
+      setError("Impossible de planifier le dîner. Réessayez.");
+      setSaving(false);
+    }
   };
 
   return (
@@ -86,7 +104,7 @@ function SuggestionsContent() {
         <div>
           <p className="text-xs text-gray-500 mb-2">Aliments manquants autorisés :</p>
           <div className="flex gap-2">
-            {[0, 1, 2, 3, 4, 5].map((n) => (
+            {[-1, 0, 1, 2, 3, 4, 5].map((n) => (
               <button
                 key={n}
                 onClick={() => {
@@ -99,7 +117,7 @@ function SuggestionsContent() {
                     : "bg-gray-100 text-gray-600"
                 }`}
               >
-                {n}
+                {n < 0 ? "Tous" : n}
               </button>
             ))}
           </div>
@@ -108,6 +126,7 @@ function SuggestionsContent() {
 
       {/* Recipe list */}
       <div className="px-4 mt-4 space-y-3">
+        {error && <p role="alert">{error} <button className="underline" onClick={() => { setOffset(0); setRetry(retry + 1); }}>Réessayer</button></p>}
         {loading ? (
           <div className="bg-white rounded-xl p-8 text-center">
             <div className="animate-spin w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full mx-auto" />
@@ -149,7 +168,7 @@ function SuggestionsContent() {
                   <div className="flex gap-3 mt-3">
                     <div className="flex items-center gap-1 text-xs text-gray-500">
                       <Flame size={14} className="text-orange-500" />
-                      {recipe.calories} kcal
+                      {Math.round(recipe.calories / Math.max(recipe.servings, 1))} kcal / portion
                     </div>
                     {recipe.prep_time && (
                       <div className="flex items-center gap-1 text-xs text-gray-500">
@@ -163,12 +182,13 @@ function SuggestionsContent() {
                     </div>
                   </div>
 
+                  <button disabled={saving} onClick={() => planDinner(recipe.id)} className="mt-3 rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white">Prévoir pour ce soir</button>
                   {/* Missing ingredients */}
                   {recipe.missing_count > 0 && recipe.missing_ingredient_names.length > 0 && (
                     <div className="mt-3 bg-orange-50 rounded-lg p-2">
                       <div className="flex items-center gap-1 mb-1">
                         <AlertTriangle size={12} className="text-orange-500" />
-                        <span className="text-xs font-medium text-orange-700">Il vous manque :</span>
+                        <span className="text-xs font-medium text-orange-700">À compléter ou à vérifier pour une portion</span>
                       </div>
                       <p className="text-xs text-orange-600">
                         {recipe.missing_ingredient_names.join(", ")}
@@ -183,14 +203,14 @@ function SuggestionsContent() {
             <div className="flex gap-2 mt-4">
               {hasMore ? (
                 <button
-                  onClick={loadMore}
+                  onClick={() => setOffset(offset + 10)}
                   className="flex-1 bg-primary-500 text-white py-3 rounded-xl font-medium"
                 >
                   Voir plus de recettes
                 </button>
               ) : (
                 <button
-                  onClick={reload}
+                  onClick={() => { setOffset(0); setRetry(retry + 1); }}
                   className="flex-1 bg-white text-gray-700 py-3 rounded-xl font-medium border border-gray-200 flex items-center justify-center gap-2"
                 >
                   <RefreshCw size={16} />

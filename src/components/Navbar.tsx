@@ -24,7 +24,7 @@ export default function Navbar() {
   const pathname = usePathname();
 
   // Hide navbar on pages that shouldn't show it
-  const hiddenPaths = ["/creation-recette", "/suggestions-recettes", "/login", "/sport"];
+  const hiddenPaths = ["/creation-recette", "/suggestions-recettes", "/login"];
   if (hiddenPaths.some((p) => pathname.startsWith(p))) {
     return null;
   }

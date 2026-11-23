@@ -6,9 +6,11 @@ import {
 } from "lucide-react";
 import { format, addDays, startOfWeek, addWeeks, subWeeks } from "date-fns";
 import { fr } from "date-fns/locale";
+import { MealConsumption } from "@/components/MealConsumption";
 import { apiUrl } from "@/lib/api";
 
 interface MealPlan {
+  consumed_portions: number;
   id: number;
   recipe_id: number;
   recipe_name: string;
@@ -41,9 +43,9 @@ export default function CalendrierPage() {
   const loadMeals = useCallback(async () => {
     const start = format(currentWeek, "yyyy-MM-dd");
     const end = format(addDays(currentWeek, 6), "yyyy-MM-dd");
-    const res = await fetch(apiUrl(`/api/meal-plans?userId=1&startDate=${start}&endDate=${end}`));
+    const res = await fetch(apiUrl(`/api/meal-plans?startDate=${start}&endDate=${end}`));
     const data = await res.json();
-    setMeals(data);
+    setMeals(Array.isArray(data) ? data : []);
   }, [currentWeek]);
 
   useEffect(() => {
@@ -89,7 +91,7 @@ export default function CalendrierPage() {
           </button>
         </div>
 
-        {/* Week summary */}
+        <p className="mt-3 text-sm font-medium">Apports prévus cette semaine</p>
         <div className="grid grid-cols-4 gap-2 mt-3">
           <div className="bg-orange-50 rounded-lg p-2 text-center">
             <p className="text-sm font-bold text-orange-600">{Math.round(weekCalories)}</p>
@@ -194,7 +196,7 @@ export default function CalendrierPage() {
                           <p className="font-medium text-sm text-gray-900 mt-1">{meal.recipe_name}</p>
                           <div className="flex gap-3 mt-1">
                             <span className="text-xs text-gray-500">
-                              {meal.calories} kcal
+                              {Math.round(meal.calories)} kcal / portion
                             </span>
                             {meal.prep_time && (
                               <span className="text-xs text-gray-500 flex items-center gap-0.5">
@@ -202,11 +204,13 @@ export default function CalendrierPage() {
                               </span>
                             )}
                             <span className="text-xs text-gray-500 flex items-center gap-0.5">
-                              <Users size={10} /> {meal.servings}
+                              <Users size={10} /> 1 portion prévue
                             </span>
                           </div>
+                          {dateStr <= today && <MealConsumption key={meal.consumed_portions} id={meal.id} portions={meal.consumed_portions} onChange={loadMeals} />}
                         </div>
                         <button
+                          aria-label="Supprimer le repas" disabled={meal.consumed_portions > 0}
                           onClick={() => removeMeal(meal.id)}
                           className="text-red-400 hover:text-red-600 p-1"
                         >
