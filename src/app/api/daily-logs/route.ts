@@ -1,14 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { journalDate } from "@/lib/food-journal";
 import { query } from "@/lib/db";
-import { seedDatabase } from "@/lib/seed";
 import { getAuthUser, UNAUTHENTICATED_RESPONSE } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   try {
-    await seedDatabase();
     const { searchParams } = new URL(request.url);
     const authUser = await getAuthUser(request);
     if (!authUser) return NextResponse.json(UNAUTHENTICATED_RESPONSE, { status: 401 });
@@ -23,7 +21,7 @@ export async function GET(request: NextRequest) {
 
     const { rows } = await query(
       `SELECT * FROM consumed_daily_totals
-       WHERE user_id = $1 AND date BETWEEN (CURRENT_DATE - ($2::integer - 1))::text AND CURRENT_DATE::text
+       WHERE user_id = $1 AND date BETWEEN CURRENT_DATE - ($2::integer - 1) AND CURRENT_DATE
        ORDER BY date DESC`,
       [userId, days]
     );

@@ -14,7 +14,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "../../src/theme/colors";
-import { apiUrl, getHeaders } from "../../src/lib/api";
+import { apiUrl, getHeaders, apiRequest } from "../../src/lib/api";
 
 interface Product {
   id: number;
@@ -45,7 +45,7 @@ export default function ScannerScreen() {
     setAdded(false);
     const url = apiUrl(`/api/scanner?barcode=${barcode}`);
     try {
-      const res = await fetch(url, { headers: getHeaders() });
+      const res = await apiRequest(url, { headers: getHeaders() });
       if (!res.ok) {
         Alert.alert("Erreur", "Erreur serveur lors de la recherche du produit.");
         setLoading(false);
@@ -68,11 +68,10 @@ export default function ScannerScreen() {
   const addToPantry = async () => {
     if (!product) return;
     try {
-      const res = await fetch(apiUrl("/api/pantry"), {
+      const res = await apiRequest(apiUrl("/api/pantry"), {
         method: "POST",
         headers: getHeaders(),
         body: JSON.stringify({
-          user_id: 1,
           ingredient_id: product.id,
           quantity: 1,
           unit: "unité",

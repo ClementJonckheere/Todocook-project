@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
-import { seedDatabase } from "@/lib/seed";
 import { getAuthUser, UNAUTHENTICATED_RESPONSE } from "@/lib/auth";
 import { validateMaxLength, validatePositiveNumber } from "@/lib/validation";
 import { goalIssue, isNutritionGoal, validActivityProfile, calculateNutrition } from "@/lib/nutrition";
@@ -9,7 +8,6 @@ export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
   try {
-    await seedDatabase();
     const authUser = await getAuthUser(request);
     if (!authUser) return NextResponse.json(UNAUTHENTICATED_RESPONSE, { status: 401 });
     const userId = authUser.id;

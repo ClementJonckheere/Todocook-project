@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
 
     if (type === "all" || type === "logs") {
       const { rows: logs } = await query(
-        `SELECT * FROM daily_logs WHERE user_id = $1 ORDER BY date`,
+        `SELECT * FROM legacy_daily_logs WHERE user_id = $1 ORDER BY date`,
         [userId]
       );
       exportData.legacy_daily_logs = logs;

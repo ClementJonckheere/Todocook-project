@@ -1,20 +1,13 @@
 import { query } from "./db";
+import { hashPassword } from "./password";
 
-let seeded = false;
-
-export async function seedDatabase() {
-  if (seeded) return;
-  seeded = true;
-
-  const { rows } = await query("SELECT COUNT(*) as count FROM users");
-  if (parseInt(rows[0].count) > 0) return;
-
-  // Create default user
-  await query(
-    `INSERT INTO users (email, first_name, last_name, age, weight, height, gender, activity_level, daily_calorie_goal, daily_protein_goal, daily_carbs_goal, daily_fat_goal)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
-    ["clement@todocook.fr", "Clément", "Jonckheere", 25, 75, 180, "homme", "modere", 2200, 60, 275, 75]
-  );
+/**
+ * Données de référence : ingrédients de base et recettes publiques.
+ * Sans effet si la base contient déjà des recettes. Lancé par `npm run db:seed`.
+ */
+export async function seedReferenceData(): Promise<boolean> {
+  const { rows } = await query<{ count: number }>("SELECT COUNT(*)::int AS count FROM recipes");
+  if (rows[0].count > 0) return false;
 
   // Seed ingredients
   const ingredients = [
@@ -464,56 +457,56 @@ export async function seedDatabase() {
     }
   }
 
-  // Add some pantry items for the default user
-  const pantryItems = [
-    { ingredient: "Pâtes", quantity: 500 },
-    { ingredient: "Riz blanc", quantity: 500 },
-    { ingredient: "Huile d'olive", quantity: 250 },
-    { ingredient: "Sel", quantity: 200 },
-    { ingredient: "Poivre", quantity: 50 },
-    { ingredient: "Oignon", quantity: 300 },
-    { ingredient: "Ail", quantity: 50 },
-    { ingredient: "Oeuf", quantity: 6 },
-    { ingredient: "Beurre", quantity: 125 },
-    { ingredient: "Farine", quantity: 500 },
-  ];
+  return true;
+}
 
+/**
+ * Compte de démonstration (garde-manger et planning de la semaine).
+ * Lancé uniquement par `npm run db:seed -- --demo`, avec SEED_DEMO_PASSWORD défini.
+ */
+export async function seedDemoUser(email: string, password: string): Promise<boolean> {
+  const { rows: existing } = await query("SELECT id FROM users WHERE email = $1", [email]);
+  if (existing.length > 0) return false;
+
+  const { rows: created } = await query<{ id: number }>(
+    `INSERT INTO users (email, password_hash, first_name, last_name, age, weight, height, gender, activity_level,
+       daily_calorie_goal, daily_protein_goal, daily_carbs_goal, daily_fat_goal)
+     VALUES ($1, $2, 'Demo', 'TodoCook', 30, 70, 175, 'homme', 'modere', 2200, 60, 275, 75) RETURNING id`,
+    [email, hashPassword(password)]
+  );
+  const userId = created[0].id;
+
+  const pantryItems: { ingredient: string; quantity: number; unit: string }[] = [
+    { ingredient: "Pâtes", quantity: 500, unit: "g" },
+    { ingredient: "Riz blanc", quantity: 500, unit: "g" },
+    { ingredient: "Huile d'olive", quantity: 250, unit: "ml" },
+    { ingredient: "Sel", quantity: 200, unit: "g" },
+    { ingredient: "Poivre", quantity: 50, unit: "g" },
+    { ingredient: "Oignon", quantity: 300, unit: "g" },
+    { ingredient: "Ail", quantity: 50, unit: "g" },
+    { ingredient: "Oeuf", quantity: 6, unit: "pièce" },
+    { ingredient: "Beurre", quantity: 125, unit: "g" },
+    { ingredient: "Farine", quantity: 500, unit: "g" },
+  ];
   for (const item of pantryItems) {
-    const ingId = await getIngId(item.ingredient);
-    if (ingId) {
+    await query(
+      `INSERT INTO pantry_items (user_id, ingredient_id, quantity, unit)
+       SELECT $1, id, $3, $4 FROM ingredients WHERE name = $2 ORDER BY id LIMIT 1
+       ON CONFLICT (user_id, ingredient_id) DO NOTHING`,
+      [userId, item.ingredient, item.quantity, item.unit]
+    );
+  }
+
+  // Planning de la semaine en cours, du lundi au dimanche
+  const { rows: recipes } = await query<{ id: number }>("SELECT id FROM recipes WHERE is_public ORDER BY id LIMIT 12");
+  if (recipes.length > 0) {
+    for (let i = 0; i < 7; i++) {
       await query(
-        `INSERT INTO pantry_items (user_id, ingredient_id, quantity, unit) VALUES ($1, $2, $3, $4)`,
-        [1, ingId, item.quantity, item.ingredient === "Oeuf" ? "pièce" : item.ingredient === "Huile d'olive" ? "ml" : "g"]
+        `INSERT INTO meal_plans (user_id, recipe_id, date, meal_type)
+         VALUES ($1, $2, date_trunc('week', CURRENT_DATE)::date + $3::int, $4)`,
+        [userId, recipes[i % recipes.length].id, i, i < 5 ? "dejeuner" : "diner"]
       );
     }
   }
-
-  // Add some daily logs for the last 30 days
-  const today = new Date();
-  for (let i = 0; i < 30; i++) {
-    const date = new Date(today);
-    date.setDate(date.getDate() - i);
-    const dateStr = date.toISOString().split("T")[0];
-    const calories = 1800 + Math.floor(Math.random() * 600);
-    const protein = 40 + Math.floor(Math.random() * 40);
-    const carbs = 200 + Math.floor(Math.random() * 100);
-    const fat = 50 + Math.floor(Math.random() * 40);
-
-    await query(
-      `INSERT INTO daily_logs (user_id, date, calories, protein, carbs, fat) VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (user_id, date) DO NOTHING`,
-      [1, dateStr, calories, protein, carbs, fat]
-    );
-  }
-
-  // Add some meal plans for this week
-  for (let i = 0; i < 7; i++) {
-    const date = new Date(today);
-    date.setDate(date.getDate() - date.getDay() + 1 + i);
-    const dateStr = date.toISOString().split("T")[0];
-    const recipeId = (i % 12) + 1;
-    await query(
-      `INSERT INTO meal_plans (user_id, recipe_id, date, meal_type) VALUES ($1, $2, $3, $4)`,
-      [1, recipeId, dateStr, i < 5 ? "dejeuner" : "diner"]
-    );
-  }
+  return true;
 }

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/lib/db";
-import { seedDatabase } from "@/lib/seed";
 import { getAuthUser, UNAUTHENTICATED_RESPONSE } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
@@ -13,7 +12,6 @@ const mealFields = `mp.*, r.name AS recipe_name, COALESCE((mp.nutrition_per_port
 
 export async function GET(request: NextRequest) {
   try {
-    await seedDatabase();
     const { searchParams } = new URL(request.url);
     const authUser = await getAuthUser(request);
     if (!authUser) return NextResponse.json(UNAUTHENTICATED_RESPONSE, { status: 401 });

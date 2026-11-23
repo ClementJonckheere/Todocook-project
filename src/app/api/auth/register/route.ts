@@ -1,14 +1,18 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
-import { hashPassword, createSession, setSessionCookie } from "@/lib/auth";
+import { hashPassword, createSession, setSessionCookie, sessionClientFrom } from "@/lib/auth";
+import { checkRateLimit, clientIp, tooManyRequests } from "@/lib/rate-limit";
 import { validateRequired, validateEmail, validatePassword } from "@/lib/validation";
 import { goalIssue, isNutritionGoal, validActivityProfile, calculateNutrition, type Gender, type ActivityLevel, type SportType } from "@/lib/nutrition";
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
+    const limit = checkRateLimit(`register:ip:${clientIp(request)}`, 5, 60 * 60 * 1000);
+    if (!limit.allowed) return tooManyRequests(limit.retryAfterSeconds);
+
+    const body = await request.json().catch(() => ({}));
+    const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : body.email;
     const {
-      email,
       password,
       first_name,
       last_name,
@@ -41,7 +45,7 @@ export async function POST(request: Request) {
     }
 
     // Check if email already exists
-    const { rows: existing } = await query("SELECT id FROM users WHERE email = $1", [email]);
+    const { rows: existing } = await query("SELECT id FROM users WHERE lower(email) = $1", [email]);
     if (existing.length > 0) {
       return NextResponse.json({ errors: [{ field: "email", message: "Cet email est déjà utilisé" }] }, { status: 409 });
     }
@@ -86,10 +90,11 @@ export async function POST(request: Request) {
     );
 
     const user = rows[0];
-    const token = createSession(user.id);
-    setSessionCookie(token);
+    const client = sessionClientFrom(request);
+    const token = await createSession(user.id, client);
+    if (client === "web") setSessionCookie(token);
 
-    return NextResponse.json(user, { status: 201 });
+    return NextResponse.json(client === "mobile" ? { ...user, token } : user, { status: 201 });
   } catch (error) {
     console.error("Register error:", error);
     return NextResponse.json({ error: "Erreur lors de l'inscription" }, { status: 500 });

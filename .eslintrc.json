@@ -1,0 +1,4 @@
+{
+  "extends": "next/core-web-vitals",
+  "ignorePatterns": ["mobile/", "public/sw.js", "scripts/generate-icons.js"]
+}

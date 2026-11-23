@@ -1,55 +1,49 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
+const SESSION_COOKIE = "todocook-session";
+
+// Seules ces routes API sont accessibles sans session. Toutes les autres exigent
+// un cookie de session (web) ou un en-tête "Authorization: Bearer" (mobile),
+// et chaque route vérifie en plus la validité de la session en base.
+const PUBLIC_API_PATHS = [
+  "/api/auth/login",
+  "/api/auth/register",
+  "/api/auth/logout",
+  "/api/nutrition/calculate",
+];
+
+const PUBLIC_PAGES = ["/login"];
+
+function matches(pathname: string, paths: string[]) {
+  return paths.some((path) => pathname === path || pathname.startsWith(`${path}/`));
+}
+
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const hasSession =
+    Boolean(request.cookies.get(SESSION_COOKIE)?.value) ||
+    /^Bearer\s+\S+$/.test(request.headers.get("authorization") ?? "");
 
-  // Public routes that don't require auth
-  const publicPaths = [
-    "/login",
-    "/api/auth/login",
-    "/api/auth/register",
-    "/api/auth/logout",
-    "/api/scanner",      // Allow barcode scanning without auth
-    "/api/ingredients",  // Allow ingredient search without auth
-    "/api/pantry",       // Allow pantry management without auth (for mobile)
-    "/api/users",        // Allow user profile without auth (for mobile)
-    "/api/recipes",      // Allow recipes without auth (for mobile)
-    "/api/meal-plans",   // Allow meal plans without auth (for mobile)
-    "/api/food-journal",  // The route authenticates each journal request
-    "/api/daily-logs",   // Allow daily logs without auth (for mobile)
-    "/api/suggestions",  // Allow suggestions without auth (for mobile)
-    "/api/favorites",    // Allow favorites without auth (for mobile)
-    "/api/ratings",      // Allow ratings without auth (for mobile)
-    "/api/shopping-lists", // Allow shopping lists without auth (for mobile)
-  ];
-  const isPublicPath = publicPaths.some((p) => pathname.startsWith(p));
-
-  // Static files
-  if (pathname.startsWith("/_next") || pathname.startsWith("/icons") || pathname.includes(".")) {
+  if (pathname.startsWith("/api/")) {
+    if (!hasSession && !matches(pathname, PUBLIC_API_PATHS)) {
+      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+    }
     return NextResponse.next();
   }
 
-  const session = request.cookies.get("todocook-session")?.value;
+  // Fichiers statiques (icônes, manifeste, service worker, page hors ligne…)
+  if (pathname.includes(".")) return NextResponse.next();
 
-  // Redirect to login if not authenticated
-  if (!isPublicPath && !session) {
-    return NextResponse.redirect(new URL("/login", request.url));
+  if (pathname === "/") {
+    return NextResponse.redirect(new URL(hasSession ? "/dashboard" : "/login", request.url));
   }
-
-  // Redirect to dashboard if already authenticated and on login page
-  if (pathname === "/login" && session) {
+  if (pathname === "/login" && hasSession) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
-
-  // Redirect root to dashboard
-  if (pathname === "/" && session) {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
-  }
-  if (pathname === "/" && !session) {
+  if (!hasSession && !matches(pathname, PUBLIC_PAGES)) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
-
   return NextResponse.next();
 }
 

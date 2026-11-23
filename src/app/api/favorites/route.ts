@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
     const userId = authUser.id;
 
     const { rows } = await query(
-      `SELECT r.*, STRING_AGG(i.name, ', ') as ingredient_names,
+      `SELECT r.*, STRING_AGG(DISTINCT i.name, ', ') as ingredient_names,
        COALESCE(AVG(rr.rating), 0) as avg_rating,
        COUNT(DISTINCT rr.id) as rating_count
        FROM recipe_favorites rf
@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
        LEFT JOIN ingredients i ON ri.ingredient_id = i.id
        LEFT JOIN recipe_ratings rr ON r.id = rr.recipe_id
        WHERE rf.user_id = $1
-       GROUP BY r.id
+       GROUP BY r.id, rf.created_at
        ORDER BY rf.created_at DESC`,
       [userId]
     );

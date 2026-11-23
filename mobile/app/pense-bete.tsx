@@ -12,7 +12,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { apiUrl, getHeaders } from "../src/lib/api";
+import { apiUrl, getHeaders, apiRequest } from "../src/lib/api";
 import { colors } from "../src/theme/colors";
 
 interface ShoppingItem {
@@ -44,7 +44,7 @@ export default function PenseBeteScreen() {
 
   const loadLists = async () => {
     try {
-      const res = await fetch(apiUrl("/api/shopping-lists?userId=1"), { headers: getHeaders() });
+      const res = await apiRequest(apiUrl("/api/shopping-lists"), { headers: getHeaders() });
       if (res.ok) {
         const data = await res.json();
         setLists(Array.isArray(data) ? data : []);
@@ -62,10 +62,10 @@ export default function PenseBeteScreen() {
   const createList = async () => {
     if (!newListTitle.trim()) return;
     try {
-      const res = await fetch(apiUrl("/api/shopping-lists"), {
+      const res = await apiRequest(apiUrl("/api/shopping-lists"), {
         method: "POST",
         headers: getHeaders(),
-        body: JSON.stringify({ user_id: 1, title: newListTitle.trim() }),
+        body: JSON.stringify({ title: newListTitle.trim() }),
       });
       if (res.ok) {
         const newList = await res.json();
@@ -86,7 +86,7 @@ export default function PenseBeteScreen() {
         style: "destructive",
         onPress: async () => {
           try {
-            await fetch(apiUrl(`/api/shopping-lists/${id}`), { method: "DELETE", headers: getHeaders() });
+            await apiRequest(apiUrl(`/api/shopping-lists/${id}`), { method: "DELETE", headers: getHeaders() });
             setLists(lists.filter((l) => l.id !== id));
             if (selectedList?.id === id) setSelectedList(null);
           } catch (err) {
@@ -99,7 +99,7 @@ export default function PenseBeteScreen() {
 
   const duplicateList = async (id: number) => {
     try {
-      const res = await fetch(apiUrl(`/api/shopping-lists/${id}/duplicate`), {
+      const res = await apiRequest(apiUrl(`/api/shopping-lists/${id}/duplicate`), {
         method: "POST",
         headers: getHeaders(),
       });
@@ -130,7 +130,7 @@ export default function PenseBeteScreen() {
       return;
     }
     try {
-      const res = await fetch(apiUrl(`/api/shopping-lists/${selectedList.id}`), {
+      const res = await apiRequest(apiUrl(`/api/shopping-lists/${selectedList.id}`), {
         method: "PUT",
         headers: getHeaders(),
         body: JSON.stringify({ title: newTitle }),
@@ -149,7 +149,7 @@ export default function PenseBeteScreen() {
   const addItem = async () => {
     if (!selectedList || !newItemName.trim()) return;
     try {
-      const res = await fetch(apiUrl(`/api/shopping-lists/${selectedList.id}/items`), {
+      const res = await apiRequest(apiUrl(`/api/shopping-lists/${selectedList.id}/items`), {
         method: "POST",
         headers: getHeaders(),
         body: JSON.stringify({ name: newItemName.trim() }),
@@ -174,7 +174,7 @@ export default function PenseBeteScreen() {
   const toggleItem = async (itemId: number, checked: boolean) => {
     if (!selectedList) return;
     try {
-      await fetch(apiUrl(`/api/shopping-lists/${selectedList.id}/items/${itemId}`), {
+      await apiRequest(apiUrl(`/api/shopping-lists/${selectedList.id}/items/${itemId}`), {
         method: "PUT",
         headers: getHeaders(),
         body: JSON.stringify({ checked }),
@@ -199,7 +199,7 @@ export default function PenseBeteScreen() {
   const deleteItem = async (itemId: number) => {
     if (!selectedList) return;
     try {
-      await fetch(apiUrl(`/api/shopping-lists/${selectedList.id}/items/${itemId}`), {
+      await apiRequest(apiUrl(`/api/shopping-lists/${selectedList.id}/items/${itemId}`), {
         method: "DELETE",
         headers: getHeaders(),
       });
@@ -222,7 +222,7 @@ export default function PenseBeteScreen() {
   const checkAll = async () => {
     if (!selectedList) return;
     try {
-      await fetch(apiUrl(`/api/shopping-lists/${selectedList.id}/check-all`), {
+      await apiRequest(apiUrl(`/api/shopping-lists/${selectedList.id}/check-all`), {
         method: "POST",
         headers: getHeaders(),
       });
@@ -243,7 +243,7 @@ export default function PenseBeteScreen() {
   const uncheckAll = async () => {
     if (!selectedList) return;
     try {
-      await fetch(apiUrl(`/api/shopping-lists/${selectedList.id}/uncheck-all`), {
+      await apiRequest(apiUrl(`/api/shopping-lists/${selectedList.id}/uncheck-all`), {
         method: "POST",
         headers: getHeaders(),
       });
