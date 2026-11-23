@@ -1,13 +1,11 @@
 import { NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth";
 import { query } from "@/lib/db";
-import { seedDatabase } from "@/lib/seed";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    await seedDatabase();
     const user = await getAuthUser();
     if (!user) {
       return NextResponse.json(null, { status: 401 });

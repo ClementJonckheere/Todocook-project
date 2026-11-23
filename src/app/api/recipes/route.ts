@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { PoolClient } from "pg";
 import { gramsPerUnit } from "@/lib/recipe-portions";
 import { getPool, query } from "@/lib/db";
-import { seedDatabase } from "@/lib/seed";
 import { getAuthUser, UNAUTHENTICATED_RESPONSE } from "@/lib/auth";
 import { validateRequired, validateMaxLength } from "@/lib/validation";
 
@@ -10,7 +9,6 @@ export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   try {
-    await seedDatabase();
     const { searchParams } = new URL(request.url);
     const search = searchParams.get("search");
     const authUser = await getAuthUser(request);
