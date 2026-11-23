@@ -32,6 +32,7 @@ interface Recipe {
 
 interface MealPlan {
   consumed_portions: number;
+  planned_portions: number;
   id: number;
   recipe_id: number;
   recipe_name: string;
@@ -375,8 +376,8 @@ export default function DashboardPage() {
                     <div>
                       <p className={`text-[11px] font-semibold uppercase tracking-wide ${config.color}`}>{meal.meal_type.replace("-", " ")}</p>
                       <p className="font-semibold text-gray-900 dark:text-white text-sm">{meal.recipe_name}</p>
-                      <p className="text-xs text-gray-400 dark:text-gray-500">{Math.round(meal.calories)} kcal / portion</p>
-                      <MealConsumption key={meal.consumed_portions} id={meal.id} portions={meal.consumed_portions} onChange={loadTodayData} />
+                      <p className="text-xs text-gray-400 dark:text-gray-500">{meal.planned_portions.toLocaleString("fr-FR")} portion(s) prévue(s) · {Math.round(meal.calories * meal.planned_portions)} kcal</p>
+                      <MealConsumption key={meal.consumed_portions} id={meal.id} planned={meal.planned_portions} portions={meal.consumed_portions} onChange={loadTodayData} />
                     </div>
                   </div>
                   <button aria-label="Supprimer le repas" disabled={meal.consumed_portions > 0} onClick={() => removeMeal(meal.id)} className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-all">
@@ -435,7 +436,7 @@ function WeekOverview() {
               )}
             </div>
             <p className={`text-[10px] font-medium mt-1 ${isToday ? "text-primary-100" : "text-gray-400 dark:text-gray-500"}`}>
-              {dayMeals.reduce((sum, m) => sum + (m.calories || 0), 0)} kcal
+              {dayMeals.reduce((sum, m) => sum + (m.calories || 0) * m.planned_portions, 0).toFixed(0)} kcal
             </p>
           </div>
         );

@@ -3,12 +3,13 @@
 import { useState } from "react";
 import { apiUrl } from "@/lib/api";
 
-export function MealConsumption({ id, portions, onChange }: {
+export function MealConsumption({ id, portions, planned, onChange }: {
   id: number;
   portions: number;
+  planned: number;
   onChange: () => Promise<void>;
 }) {
-  const [amount, setAmount] = useState(String(portions || 1));
+  const [amount, setAmount] = useState(String(portions || planned));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const save = async (value: number) => {

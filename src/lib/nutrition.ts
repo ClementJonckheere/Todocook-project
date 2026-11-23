@@ -3,6 +3,28 @@
  * Uses the Mifflin-St Jeor equation for BMR calculation
  */
 
+export const GOAL_LABELS = {
+  maintien: "Équilibre / maintien",
+  prise_masse: "Prise de masse",
+  perte_poids: "Perte de poids",
+} as const;
+export type NutritionGoal = keyof typeof GOAL_LABELS;
+
+export function isNutritionGoal(value: unknown): value is NutritionGoal {
+  return typeof value === "string" && Object.prototype.hasOwnProperty.call(GOAL_LABELS, value);
+}
+
+export function goalIssue(goal: NutritionGoal, age: number, weight: number, height: number) {
+  if (goal === "maintien") return null;
+  if (!(age >= 18 && age <= 120 && weight >= 20 && weight <= 300 && height >= 100 && height <= 250)) {
+    return "Les objectifs de variation de poids nécessitent un profil adulte complet.";
+  }
+  if (goal === "perte_poids" && weight / ((height / 100) ** 2) < 18.5) {
+    return "Le profil renseigné ne permet pas de proposer un déficit automatique.";
+  }
+  return null;
+}
+
 export type Gender = "homme" | "femme";
 
 export type ActivityLevel =
@@ -91,6 +113,12 @@ const SPORT_PROTEIN_MULTIPLIERS: Record<SportType, number> = {
   autre: 1.2,
 };
 
+export function validActivityProfile(gender: unknown, activity: unknown, sport: unknown): boolean {
+  return (gender === "homme" || gender === "femme") &&
+    typeof activity === "string" && Object.prototype.hasOwnProperty.call(ACTIVITY_MULTIPLIERS, activity) &&
+    (sport == null || (typeof sport === "string" && Object.prototype.hasOwnProperty.call(SPORT_ADJUSTMENTS, sport)));
+}
+
 export interface NutritionInput {
   age: number;          // years
   weight: number;       // kg
@@ -98,6 +126,7 @@ export interface NutritionInput {
   gender: Gender;
   activityLevel: ActivityLevel;
   sportType?: SportType;
+  goal?: NutritionGoal;
 }
 
 export interface NutritionResult {
@@ -146,7 +175,14 @@ export function calculateNutrition(input: NutritionInput): NutritionResult {
 
   // Add sport-specific calorie adjustment
   const sportAdjustment = SPORT_ADJUSTMENTS[sportType];
-  const dailyCalories = Math.round(tdee + sportAdjustment);
+  const maintenance = tdee + sportAdjustment;
+  const goal = input.goal ?? "maintien";
+  const eligible = !goalIssue(goal, age, weight, height);
+  // Modest initial estimates; the profile also permits an individual target.
+  let calories = maintenance;
+  if (eligible && goal === "prise_masse") calories += Math.min(300, maintenance * 0.1);
+  if (eligible && goal === "perte_poids") calories -= Math.min(250, maintenance * 0.1);
+  const dailyCalories = Math.round(calories);
 
   // Calculate protein needs based on sport
   const proteinMultiplier = SPORT_PROTEIN_MULTIPLIERS[sportType];

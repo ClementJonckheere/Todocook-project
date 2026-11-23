@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
 import { hashPassword, createSession, setSessionCookie } from "@/lib/auth";
 import { validateRequired, validateEmail, validatePassword } from "@/lib/validation";
-import { calculateNutrition, type Gender, type ActivityLevel, type SportType } from "@/lib/nutrition";
+import { goalIssue, isNutritionGoal, validActivityProfile, calculateNutrition, type Gender, type ActivityLevel, type SportType } from "@/lib/nutrition";
 
 export async function POST(request: Request) {
   try {
@@ -20,6 +20,13 @@ export async function POST(request: Request) {
       sport_type,
     } = body;
 
+    const goal = body.nutrition_goal === undefined ? "maintien" : body.nutrition_goal;
+    const issue = isNutritionGoal(goal) ? goalIssue(goal, Number(age), Number(weight), Number(height)) : "Objectif invalide.";
+    if (issue) return NextResponse.json({ errors: [{ field: "nutrition_goal", message: issue }] }, { status: 400 });
+
+    if ((goal !== "maintien" || activity_level) && !validActivityProfile(gender, activity_level, sport_type)) {
+      return NextResponse.json({ errors: [{ message: "Complétez le sexe et le niveau d’activité du profil." }] }, { status: 400 });
+    }
     const errors = [
       ...validateRequired({ email, password, first_name, last_name }, ["email", "password", "first_name", "last_name"]),
       ...validatePassword(password),
@@ -52,6 +59,7 @@ export async function POST(request: Request) {
         height: Number(height),
         gender: gender as Gender,
         activityLevel: activity_level as ActivityLevel,
+        goal,
         sportType: (sport_type as SportType) || "aucun",
       });
       daily_calorie_goal = nutrition.dailyCalories;
@@ -65,15 +73,15 @@ export async function POST(request: Request) {
       `INSERT INTO users (
         email, password_hash, first_name, last_name,
         age, weight, height, gender, activity_level, sport_type,
-        daily_calorie_goal, daily_protein_goal, daily_carbs_goal, daily_fat_goal
+        daily_calorie_goal, daily_protein_goal, daily_carbs_goal, daily_fat_goal, nutrition_goal
       )
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
        RETURNING id, email, first_name, last_name, age, weight, height, gender, activity_level, sport_type,
-                 daily_calorie_goal, daily_protein_goal, daily_carbs_goal, daily_fat_goal`,
+                 nutrition_goal, daily_calorie_goal, daily_protein_goal, daily_carbs_goal, daily_fat_goal`,
       [
         email, password_hash, first_name, last_name,
         age || null, weight || null, height || null, gender || null, activity_level || null, sport_type || "aucun",
-        daily_calorie_goal, daily_protein_goal, daily_carbs_goal, daily_fat_goal,
+        daily_calorie_goal, daily_protein_goal, daily_carbs_goal, daily_fat_goal, goal,
       ]
     );
 

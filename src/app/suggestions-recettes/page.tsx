@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, RefreshCw, AlertTriangle, ChefHat, Clock, Users, Flame } from "lucide-react";
 import { format } from "date-fns";
+import { GOAL_LABELS, type NutritionGoal } from "@/lib/nutrition";
 import { apiUrl } from "@/lib/api";
 
 interface SuggestedRecipe {
@@ -19,6 +20,7 @@ interface SuggestedRecipe {
   servings: number;
   missing_count: number;
   total_ingredients: number;
+  suggested_portions: number;
   missing_ingredient_names: string[];
 }
 
@@ -40,6 +42,7 @@ function SuggestionsContent() {
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(false);
   const [total, setTotal] = useState(0);
+  const [target, setTarget] = useState<{ goal: NutritionGoal; calories: number; protein: number } | null>(null);
   const [filter, setFilter] = useState(maxMissing);
 
   const [error, setError] = useState("");
@@ -52,11 +55,12 @@ function SuggestionsContent() {
       setLoading(true);
       setError("");
       try {
-        const response = await fetch(apiUrl(`/api/suggestions?maxMissing=${filter < 0 ? "all" : filter}&offset=${offset}`), { signal: controller.signal });
+        const response = await fetch(apiUrl(`/api/suggestions?personalize=dinner&maxMissing=${filter < 0 ? "all" : filter}&offset=${offset}`), { signal: controller.signal });
         if (!response.ok) throw new Error();
         const data = await response.json();
         if (controller.signal.aborted) return;
         setRecipes(previous => offset ? [...previous, ...data.recipes] : data.recipes);
+        setTarget(data.dinner_target);
         setHasMore(data.hasMore);
         setTotal(data.total);
       } catch {
@@ -69,14 +73,14 @@ function SuggestionsContent() {
     return () => controller.abort();
   }, [filter, offset, retry]);
 
-  const planDinner = async (recipeId: number) => {
+  const planDinner = async (recipe: SuggestedRecipe) => {
     setSaving(true);
     setError("");
     try {
       const response = await fetch(apiUrl("/api/meal-plans"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ recipe_id: recipeId, date: format(new Date(), "yyyy-MM-dd"), meal_type: "diner" }),
+        body: JSON.stringify({ recipe_id: recipe.id, planned_portions: recipe.suggested_portions, date: format(new Date(), "yyyy-MM-dd"), meal_type: "diner" }),
       });
       if (!response.ok) throw new Error();
       router.push("/dashboard");
@@ -100,6 +104,7 @@ function SuggestionsContent() {
           </div>
         </div>
 
+        {target && <p className="mb-3 text-sm text-gray-600">{GOAL_LABELS[target.goal]} · Pour classer les dîners, TodoCook utilise un tiers de vos cibles journalières, soit environ {target.calories} kcal et {target.protein} g de protéines.</p>}
         {/* Filter */}
         <div>
           <p className="text-xs text-gray-500 mb-2">Aliments manquants autorisés :</p>
@@ -168,7 +173,7 @@ function SuggestionsContent() {
                   <div className="flex gap-3 mt-3">
                     <div className="flex items-center gap-1 text-xs text-gray-500">
                       <Flame size={14} className="text-orange-500" />
-                      {Math.round(recipe.calories / Math.max(recipe.servings, 1))} kcal / portion
+                      {Math.round(recipe.calories * recipe.suggested_portions / Math.max(recipe.servings, 1))} kcal · {Math.round(recipe.protein * recipe.suggested_portions / Math.max(recipe.servings, 1))} g de protéines
                     </div>
                     {recipe.prep_time && (
                       <div className="flex items-center gap-1 text-xs text-gray-500">
@@ -178,17 +183,17 @@ function SuggestionsContent() {
                     )}
                     <div className="flex items-center gap-1 text-xs text-gray-500">
                       <Users size={14} />
-                      {recipe.servings} pers.
+                      {recipe.suggested_portions.toLocaleString("fr-FR")} portion{recipe.suggested_portions > 1 ? "s" : ""}
                     </div>
                   </div>
 
-                  <button disabled={saving} onClick={() => planDinner(recipe.id)} className="mt-3 rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white">Prévoir pour ce soir</button>
+                  <button disabled={saving} onClick={() => planDinner(recipe)} className="mt-3 rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white">Prévoir pour ce soir</button>
                   {/* Missing ingredients */}
                   {recipe.missing_count > 0 && recipe.missing_ingredient_names.length > 0 && (
                     <div className="mt-3 bg-orange-50 rounded-lg p-2">
                       <div className="flex items-center gap-1 mb-1">
                         <AlertTriangle size={12} className="text-orange-500" />
-                        <span className="text-xs font-medium text-orange-700">À compléter ou à vérifier pour une portion</span>
+                        <span className="text-xs font-medium text-orange-700">À compléter ou à vérifier pour la quantité proposée</span>
                       </div>
                       <p className="text-xs text-orange-600">
                         {recipe.missing_ingredient_names.join(", ")}
