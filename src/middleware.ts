@@ -16,6 +16,7 @@ export function middleware(request: NextRequest) {
     "/api/users",        // Allow user profile without auth (for mobile)
     "/api/recipes",      // Allow recipes without auth (for mobile)
     "/api/meal-plans",   // Allow meal plans without auth (for mobile)
+    "/api/food-journal",  // The route authenticates each journal request
     "/api/daily-logs",   // Allow daily logs without auth (for mobile)
     "/api/suggestions",  // Allow suggestions without auth (for mobile)
     "/api/favorites",    // Allow favorites without auth (for mobile)

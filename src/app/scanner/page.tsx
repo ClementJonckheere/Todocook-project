@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useRef } from "react";
 import { ScanBarcode, Plus, Check, AlertCircle, X, Keyboard } from "lucide-react";
+import Link from "next/link";
+import { journalDate } from "@/lib/food-journal";
 import { apiUrl } from "@/lib/api";
 
 interface Product {
@@ -21,6 +23,11 @@ export default function ScannerPage() {
   const [scanning, setScanning] = useState(false);
   const [manualBarcode, setManualBarcode] = useState("");
   const [showManual, setShowManual] = useState(false);
+  const [journalDay, setJournalDay] = useState("");
+  useEffect(() => {
+    const value = new URLSearchParams(window.location.search).get("date");
+    if (journalDate(value)) setJournalDay(value);
+  }, []);
   const [product, setProduct] = useState<Product | null>(null);
   const [status, setStatus] = useState<"idle" | "scanning" | "found" | "not_found" | "added" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");
@@ -117,7 +124,7 @@ export default function ScannerPage() {
       <div className="bg-white px-4 pt-12 pb-4 shadow-sm">
         <h1 className="text-xl font-bold text-gray-900">Scanner un produit</h1>
         <p className="text-sm text-gray-500 mt-1">
-          Scannez un code-barres pour l&apos;ajouter à votre garde-manger
+          Scannez un code-barres pour enregistrer un aliment
         </p>
       </div>
 
@@ -251,6 +258,10 @@ export default function ScannerPage() {
 
               <p className="text-xs text-gray-400 mt-2 text-center">Valeurs pour 100g</p>
 
+              <Link href={`/journal-alimentaire?aliment=${product.id}&date=${journalDay}`}
+                className="mt-3 block w-full rounded-xl border border-primary-500 px-3 py-2.5 text-center font-medium text-primary-700">
+                Saisir la quantité consommée
+              </Link>
               <button
                 onClick={addToPantry}
                 className="w-full mt-4 bg-primary-500 text-white py-3 rounded-xl font-medium flex items-center justify-center gap-2"
