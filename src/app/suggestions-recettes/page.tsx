@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, RefreshCw, AlertTriangle, ChefHat, Clock, Users, Flame } from "lucide-react";
 import { format } from "date-fns";
 import { GOAL_LABELS, type NutritionGoal } from "@/lib/nutrition";
+import { DinnerExclusions } from "@/components/DinnerExclusions";
 import { apiUrl } from "@/lib/api";
 
 interface SuggestedRecipe {
@@ -15,8 +16,10 @@ interface SuggestedRecipe {
   protein: number;
   carbs: number;
   fat: number;
-  prep_time: number;
-  cook_time: number;
+  prep_time: number | null;
+  cook_time: number | null;
+  instructions: string | null;
+  dinner_ingredients: { id: number; name: string; quantity: number; unit: string }[];
   servings: number;
   missing_count: number;
   total_ingredients: number;
@@ -43,6 +46,7 @@ function SuggestionsContent() {
   const [hasMore, setHasMore] = useState(false);
   const [total, setTotal] = useState(0);
   const [target, setTarget] = useState<{ goal: NutritionGoal; calories: number; protein: number } | null>(null);
+  const [minutes, setMinutes] = useState("");
   const [filter, setFilter] = useState(maxMissing);
 
   const [error, setError] = useState("");
@@ -53,9 +57,12 @@ function SuggestionsContent() {
     const controller = new AbortController();
     async function loadRecipes() {
       setLoading(true);
+      if (offset === 0) setRecipes([]);
       setError("");
       try {
-        const response = await fetch(apiUrl(`/api/suggestions?personalize=dinner&maxMissing=${filter < 0 ? "all" : filter}&offset=${offset}`), { signal: controller.signal });
+        const params = new URLSearchParams({ personalize: "dinner", maxMissing: filter < 0 ? "all" : String(filter), offset: String(offset) });
+        if (minutes) params.set("maxMinutes", minutes);
+        const response = await fetch(apiUrl(`/api/suggestions?${params}`), { signal: controller.signal });
         if (!response.ok) throw new Error();
         const data = await response.json();
         if (controller.signal.aborted) return;
@@ -71,7 +78,7 @@ function SuggestionsContent() {
     }
     loadRecipes();
     return () => controller.abort();
-  }, [filter, offset, retry]);
+  }, [filter, minutes, offset, retry]);
 
   const planDinner = async (recipe: SuggestedRecipe) => {
     setSaving(true);
@@ -105,6 +112,14 @@ function SuggestionsContent() {
         </div>
 
         {target && <p className="mb-3 text-sm text-gray-600">{GOAL_LABELS[target.goal]} · Pour classer les dîners, TodoCook utilise un tiers de vos cibles journalières, soit environ {target.calories} kcal et {target.protein} g de protéines.</p>}
+        <label className="mt-4 block text-xs font-medium text-gray-600">Temps total disponible
+          <select value={minutes} onChange={event => { setMinutes(event.target.value); setOffset(0); }}
+            className="ml-2 rounded-lg border px-3 py-2 text-sm">
+            <option value="">Sans limite</option>
+            {[15, 20, 30, 45, 60].map(value => <option key={value} value={value}>{value} min maximum</option>)}
+          </select>
+        </label>
+        <DinnerExclusions onChange={() => { setOffset(0); setRetry(value => value + 1); }} />
         {/* Filter */}
         <div>
           <p className="text-xs text-gray-500 mb-2">Aliments manquants autorisés :</p>
@@ -137,12 +152,12 @@ function SuggestionsContent() {
             <div className="animate-spin w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full mx-auto" />
             <p className="text-sm text-gray-500 mt-3">Recherche de recettes...</p>
           </div>
-        ) : recipes.length === 0 ? (
+        ) : error && recipes.length === 0 ? null : recipes.length === 0 ? (
           <div className="bg-white rounded-xl p-8 text-center">
             <ChefHat size={40} className="mx-auto text-gray-300" />
             <p className="font-medium text-gray-600 mt-3">Aucune recette trouvée</p>
             <p className="text-sm text-gray-400 mt-1">
-              Essayez d&apos;augmenter le nombre d&apos;aliments manquants autorisés
+              Essayez un délai plus long, autorisez davantage d’ingrédients manquants ou ajustez vos préférences.
             </p>
           </div>
         ) : (
@@ -175,10 +190,10 @@ function SuggestionsContent() {
                       <Flame size={14} className="text-orange-500" />
                       {Math.round(recipe.calories * recipe.suggested_portions / Math.max(recipe.servings, 1))} kcal · {Math.round(recipe.protein * recipe.suggested_portions / Math.max(recipe.servings, 1))} g de protéines
                     </div>
-                    {recipe.prep_time && (
+                    {recipe.prep_time !== null && recipe.cook_time !== null && (
                       <div className="flex items-center gap-1 text-xs text-gray-500">
                         <Clock size={14} />
-                        {(recipe.prep_time || 0) + (recipe.cook_time || 0)} min
+                        {recipe.prep_time + recipe.cook_time} min
                       </div>
                     )}
                     <div className="flex items-center gap-1 text-xs text-gray-500">
@@ -187,6 +202,15 @@ function SuggestionsContent() {
                     </div>
                   </div>
 
+                  <details className="mt-3 border-t pt-3 text-sm">
+                    <summary className="cursor-pointer font-medium">Ingrédients et préparation</summary>
+                    <ul className="my-2 space-y-1">
+                      {recipe.dinner_ingredients.map(food => (
+                        <li key={food.id}>{food.name} · {food.quantity.toLocaleString("fr-FR", { maximumFractionDigits: 2 })} {food.unit}</li>
+                      ))}
+                    </ul>
+                    <p className="whitespace-pre-line text-gray-600">{recipe.instructions || "Préparation à compléter."}</p>
+                  </details>
                   <button disabled={saving} onClick={() => planDinner(recipe)} className="mt-3 rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white">Prévoir pour ce soir</button>
                   {/* Missing ingredients */}
                   {recipe.missing_count > 0 && recipe.missing_ingredient_names.length > 0 && (

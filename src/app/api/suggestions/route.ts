@@ -27,7 +27,13 @@ export async function GET(request: NextRequest) {
     const offset = Math.max(parseInt(searchParams.get("offset") || "0") || 0, 0);
     const limit = 10;
 
-    const profile = searchParams.get("personalize") === "dinner"
+    const dinner = searchParams.get("personalize") === "dinner";
+    const rawMinutes = searchParams.get("maxMinutes");
+    const minutes = rawMinutes === null ? null : Number(rawMinutes);
+    if (minutes !== null && (!Number.isInteger(minutes) || minutes < 1 || minutes > 1440)) {
+      return NextResponse.json({ error: "Durée invalide." }, { status: 400 });
+    }
+    const profile = dinner
       ? (await query("SELECT age, nutrition_goal, daily_calorie_goal, daily_protein_goal FROM users WHERE id = $1", [userId])).rows[0]
       : null;
     const personalized = profile?.age >= 18 && profile.daily_calorie_goal > 0 && profile.daily_protein_goal > 0;
@@ -40,9 +46,15 @@ export async function GET(request: NextRequest) {
        JOIN recipe_ingredients ri ON ri.recipe_id = r.id
        JOIN ingredients i ON i.id = ri.ingredient_id
        LEFT JOIN pantry_items pi ON pi.ingredient_id = i.id AND pi.user_id = $1
-       WHERE r.is_public OR r.created_by = $1
+       WHERE (r.is_public OR r.created_by = $1)
+         AND ($2::integer IS NULL OR (r.prep_time >= 0 AND r.cook_time >= 0 AND r.prep_time + r.cook_time <= $2))
+         AND (NOT $3::boolean OR NOT EXISTS (
+           SELECT 1 FROM recipe_ingredients line
+           JOIN dinner_exclusions x ON x.ingredient_id = line.ingredient_id AND x.user_id = $1
+           WHERE line.recipe_id = r.id
+         ))
        GROUP BY r.id ORDER BY r.id`,
-      [userId]
+      [userId, minutes, dinner]
     );
     const filtered = rows.map(({ ingredients, ...recipe }) => {
       const servings = Math.max(1, recipe.servings || 1);
@@ -57,7 +69,10 @@ export async function GET(request: NextRequest) {
         const requiredFactor = gramsPerUnit(food, food.recipeUnit);
         return !stockFactor || !requiredFactor || food.available * stockFactor < needed * requiredFactor;
       }) as StockCheck[];
-      return { ...recipe, suggested_portions: suggestion.portions, distance: suggestion.distance, total_ingredients: ingredients.length, missing_count: missing.length,
+      const dinnerIngredients = dinner ? ingredients.map((food: StockCheck) => ({
+        id: food.id, name: food.name, quantity: food.required * suggestion.portions, unit: food.recipeUnit,
+      })) : undefined;
+      return { ...recipe, dinner_ingredients: dinnerIngredients, suggested_portions: suggestion.portions, distance: suggestion.distance, total_ingredients: ingredients.length, missing_count: missing.length,
         missing_ingredient_ids: missing.map(food => food.id),
         missing_ingredient_names: missing.map(food => food.name) };
     }).filter(recipe => recipe.missing_count <= maxMissing)

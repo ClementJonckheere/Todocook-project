@@ -204,6 +204,11 @@ async function runMigrations(client: any) {
   `);
 
   await client.query(`
+    CREATE TABLE IF NOT EXISTS dinner_exclusions (
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      ingredient_id INTEGER NOT NULL REFERENCES ingredients(id) ON DELETE CASCADE,
+      PRIMARY KEY (user_id, ingredient_id)
+    );
     ALTER TABLE users ADD COLUMN IF NOT EXISTS nutrition_goal TEXT NOT NULL DEFAULT 'maintien'
       CHECK (nutrition_goal IN ('maintien', 'prise_masse', 'perte_poids'));
     ALTER TABLE meal_plans ADD COLUMN IF NOT EXISTS planned_portions DOUBLE PRECISION NOT NULL DEFAULT 1
