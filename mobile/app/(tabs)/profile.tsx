@@ -12,9 +12,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { format } from "date-fns";
-import { apiUrl, getHeaders } from "../../src/lib/api";
+import { apiUrl, getHeaders, apiRequest, logout } from "../../src/lib/api";
 import { colors } from "../../src/theme/colors";
-import { calculateNutrition, type Gender, type ActivityLevel, type SportType } from "../../src/lib/nutrition";
 
 interface User {
   id: number;
@@ -59,9 +58,9 @@ export default function ProfileScreen() {
     try {
       const today = format(new Date(), "yyyy-MM-dd");
       const [userRes, logsRes, todayRes] = await Promise.all([
-        fetch(apiUrl("/api/users"), { headers: getHeaders() }),
-        fetch(apiUrl("/api/daily-logs?days=30"), { headers: getHeaders() }),
-        fetch(apiUrl(`/api/daily-logs?date=${today}`), { headers: getHeaders() }),
+        apiRequest(apiUrl("/api/users"), { headers: getHeaders() }),
+        apiRequest(apiUrl("/api/daily-logs?days=30"), { headers: getHeaders() }),
+        apiRequest(apiUrl(`/api/daily-logs?date=${today}`), { headers: getHeaders() }),
       ]);
       const userData = await userRes.json();
       const logsData = await logsRes.json();
@@ -82,13 +81,14 @@ export default function ProfileScreen() {
     }
   };
 
+  // Le serveur recalcule les objectifs nutritionnels dès que le profil est complet
+  // (source de vérité unique : src/lib/nutrition.ts côté API).
   const saveProfile = async () => {
     try {
-      await fetch(apiUrl("/api/users"), {
+      const res = await apiRequest(apiUrl("/api/users"), {
         method: "PUT",
         headers: getHeaders(),
         body: JSON.stringify({
-          id: 1,
           age: parseInt(form.age) || null,
           weight: parseFloat(form.weight) || null,
           height: parseInt(form.height) || null,
@@ -97,18 +97,21 @@ export default function ProfileScreen() {
           sport_type: form.sport_type || "aucun",
         }),
       });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || data.errors?.[0]?.message || "Impossible de sauvegarder.");
+      }
       setEditing(false);
       loadData();
-    } catch {
-      Alert.alert("Erreur", "Impossible de sauvegarder.");
+    } catch (error) {
+      Alert.alert("Erreur", error instanceof Error ? error.message : "Impossible de sauvegarder.");
     }
   };
 
   const handleLogout = async () => {
     try {
-      await fetch(apiUrl("/api/auth/logout"), { method: "POST", headers: getHeaders() });
-      router.replace("/login");
-    } catch {
+      await logout();
+    } finally {
       router.replace("/login");
     }
   };
@@ -117,40 +120,8 @@ export default function ProfileScreen() {
 
   const recalculateGoals = async () => {
     if (!canRecalculate) return;
-
     setRecalculating(true);
-    const result = calculateNutrition({
-      age: parseInt(form.age),
-      weight: parseFloat(form.weight),
-      height: parseFloat(form.height),
-      gender: form.gender as Gender,
-      activityLevel: form.activity_level as ActivityLevel,
-      sportType: (form.sport_type as SportType) || "aucun",
-    });
-
-    try {
-      await fetch(apiUrl("/api/users"), {
-        method: "PUT",
-        headers: getHeaders(),
-        body: JSON.stringify({
-          id: 1,
-          age: parseInt(form.age) || null,
-          weight: parseFloat(form.weight) || null,
-          height: parseInt(form.height) || null,
-          gender: form.gender || null,
-          activity_level: form.activity_level || null,
-          sport_type: form.sport_type || "aucun",
-          daily_calorie_goal: result.dailyCalories,
-          daily_protein_goal: result.dailyProtein,
-          daily_carbs_goal: result.dailyCarbs,
-          daily_fat_goal: result.dailyFat,
-        }),
-      });
-      setEditing(false);
-      loadData();
-    } catch {
-      Alert.alert("Erreur", "Impossible de recalculer.");
-    }
+    await saveProfile();
     setRecalculating(false);
   };
 
