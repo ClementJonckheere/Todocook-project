@@ -1,4 +1,5 @@
 import Constants from "expo-constants";
+import { Platform } from "react-native";
 import * as SecureStore from "expo-secure-store";
 
 const TOKEN_KEY = "todocook-session-token";
@@ -26,20 +27,30 @@ export function apiUrl(path: string): string {
   return `${API_BASE_URL}${path}`;
 }
 
+// expo-secure-store n'existe pas sur le web : la cible web d'Expo (`npm run web`, développement
+// uniquement) garde le token dans localStorage. Sur iOS / Android, il reste dans le trousseau sécurisé.
+const tokenStore = Platform.OS === "web"
+  ? {
+      getItemAsync: async (key: string) => globalThis.localStorage?.getItem(key) ?? null,
+      setItemAsync: async (key: string, value: string) => globalThis.localStorage?.setItem(key, value),
+      deleteItemAsync: async (key: string) => globalThis.localStorage?.removeItem(key),
+    }
+  : SecureStore;
+
 /** Charge le token enregistré sur l'appareil. À appeler au démarrage de l'application. */
 export async function loadSession(): Promise<boolean> {
-  sessionToken = await SecureStore.getItemAsync(TOKEN_KEY);
+  sessionToken = await tokenStore.getItemAsync(TOKEN_KEY);
   return sessionToken !== null;
 }
 
 export async function saveSession(token: string): Promise<void> {
   sessionToken = token;
-  await SecureStore.setItemAsync(TOKEN_KEY, token);
+  await tokenStore.setItemAsync(TOKEN_KEY, token);
 }
 
 export async function clearSession(): Promise<void> {
   sessionToken = null;
-  await SecureStore.deleteItemAsync(TOKEN_KEY);
+  await tokenStore.deleteItemAsync(TOKEN_KEY);
 }
 
 export function hasSession(): boolean {
@@ -63,6 +74,13 @@ export function getHeaders(additionalHeaders?: Record<string, string>): Record<s
 
 /** fetch authentifié : ajoute le token de session et gère l'expiration. */
 export async function apiRequest(url: string, options: RequestInit = {}): Promise<Response> {
+  // Sans session, inutile d'interroger l'API : l'écran de connexion va s'afficher.
+  if (!sessionToken) {
+    return new Response(JSON.stringify({ error: "Non authentifié" }), {
+      status: 401,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
   const res = await fetch(url, {
     ...options,
     headers: getHeaders(options.headers as Record<string, string> | undefined),

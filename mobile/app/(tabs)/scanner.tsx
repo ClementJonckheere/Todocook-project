@@ -13,6 +13,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { Ionicons } from "@expo/vector-icons";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { colors } from "../../src/theme/colors";
 import { apiUrl, getHeaders, apiRequest } from "../../src/lib/api";
 
@@ -31,6 +32,9 @@ interface Product {
 }
 
 export default function ScannerScreen() {
+  const router = useRouter();
+  // Jour du journal quand le scan est lancé depuis le journal alimentaire
+  const { date } = useLocalSearchParams<{ date?: string }>();
   const [permission, requestPermission] = useCameraPermissions();
   const [scanning, setScanning] = useState(false);
   const [manualBarcode, setManualBarcode] = useState("");
@@ -43,7 +47,7 @@ export default function ScannerScreen() {
     setLoading(true);
     setProduct(null);
     setAdded(false);
-    const url = apiUrl(`/api/scanner?barcode=${barcode}`);
+    const url = apiUrl(`/api/scanner?barcode=${encodeURIComponent(barcode)}`);
     try {
       const res = await apiRequest(url, { headers: getHeaders() });
       if (!res.ok) {
@@ -211,6 +215,19 @@ export default function ScannerScreen() {
                 {added ? "Ajouté au garde-manger" : "Ajouter au garde-manger"}
               </Text>
             </TouchableOpacity>
+
+            <TouchableOpacity
+              style={s.journalBtn}
+              onPress={() =>
+                router.push({
+                  pathname: "/journal-alimentaire",
+                  params: { aliment: String(product.id), ...(date ? { date } : {}) },
+                })
+              }
+            >
+              <Ionicons name="nutrition-outline" size={20} color={colors.primary[600]} />
+              <Text style={s.journalBtnText}>J'en ai mangé : ajouter au journal</Text>
+            </TouchableOpacity>
           </View>
         )}
       </ScrollView>
@@ -250,4 +267,6 @@ const s = StyleSheet.create({
   addBtn: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: colors.primary[500], borderRadius: 14, paddingVertical: 14, paddingHorizontal: 24, marginTop: 16, width: "100%", justifyContent: "center" },
   addBtnDone: { backgroundColor: colors.primary[700] },
   addBtnText: { color: colors.white, fontSize: 15, fontWeight: "700" },
+  journalBtn: { flexDirection: "row", alignItems: "center", gap: 8, borderWidth: 1, borderColor: colors.primary[200], borderRadius: 14, paddingVertical: 13, paddingHorizontal: 24, marginTop: 10, width: "100%", justifyContent: "center" },
+  journalBtnText: { color: colors.primary[600], fontSize: 15, fontWeight: "700" },
 });

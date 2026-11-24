@@ -11,11 +11,14 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { format, addDays, startOfWeek } from "date-fns";
 import { fr } from "date-fns/locale";
 import { apiUrl, getHeaders, apiRequest } from "../../src/lib/api";
 import { colors } from "../../src/theme/colors";
+import { MealConsumption } from "../../src/components/MealConsumption";
+import { PortionStepper } from "../../src/components/PortionStepper";
+import { formatNumber, parseDecimal, validPortions } from "../../src/lib/food-journal";
 
 interface User {
   id: number;
@@ -30,6 +33,7 @@ interface Recipe {
   calories: number;
   prep_time: number;
   cook_time: number;
+  servings: number;
 }
 
 interface MealPlan {
@@ -38,8 +42,13 @@ interface MealPlan {
   recipe_name: string;
   date: string;
   meal_type: string;
+  /** Valeurs pour une portion */
   calories: number;
+  planned_portions: number;
+  consumed_portions: number;
 }
+
+const perPortion = (recipe: Recipe) => recipe.calories / Math.max(recipe.servings || 1, 1);
 
 const mealTypes = [
   { key: "petit-dejeuner", label: "Petit-dej", icon: "sunny-outline" as const, color: "#f59e0b" },
@@ -58,18 +67,25 @@ export default function DashboardScreen() {
   const [selectedMealType, setSelectedMealType] = useState("dejeuner");
   const [todayMeals, setTodayMeals] = useState<MealPlan[]>([]);
   const [weekMeals, setWeekMeals] = useState<MealPlan[]>([]);
+  const [plannedPortions, setPlannedPortions] = useState("1");
+  // Calories réellement consommées (repas mangés + journal alimentaire), et non planifiées
+  const [todayCalories, setTodayCalories] = useState(0);
 
   const today = format(new Date(), "yyyy-MM-dd");
-  const todayCalories = todayMeals.reduce((sum, m) => sum + (m.calories || 0), 0);
   const calorieGoal = user?.daily_calorie_goal || 2000;
   const caloriePercent = Math.min((todayCalories / calorieGoal) * 100, 100);
 
   const loadData = useCallback(async () => {
     try {
-      const [userRes, mealsRes] = await Promise.all([
+      const [userRes, mealsRes, logRes] = await Promise.all([
         apiRequest(apiUrl("/api/users"), { headers: getHeaders() }),
         apiRequest(apiUrl(`/api/meal-plans?startDate=${today}&endDate=${today}`), { headers: getHeaders() }),
+        apiRequest(apiUrl(`/api/daily-logs?date=${today}`), { headers: getHeaders() }),
       ]);
+      if (logRes.ok) {
+        const logs = await logRes.json();
+        setTodayCalories(Array.isArray(logs) && logs[0] ? logs[0].calories : 0);
+      }
       if (!userRes.ok || !mealsRes.ok) return;
       const userData = await userRes.json();
       const mealsData = await mealsRes.json();
@@ -91,7 +107,8 @@ export default function DashboardScreen() {
     }
   }, [today]);
 
-  useEffect(() => { loadData(); }, [loadData]);
+  // Recharge en revenant sur l'onglet (ex. après une saisie dans le journal)
+  useFocusEffect(useCallback(() => { loadData(); }, [loadData]));
 
   useEffect(() => {
     if (searchQuery.length >= 2) {
@@ -106,13 +123,17 @@ export default function DashboardScreen() {
   }, [searchQuery]);
 
   const addMeal = async (recipeId: number, mealType: string) => {
+    const portions = parseDecimal(plannedPortions);
+    if (!validPortions(portions)) return;
     try {
-      await apiRequest(apiUrl("/api/meal-plans"), {
+      const res = await apiRequest(apiUrl("/api/meal-plans"), {
         method: "POST",
         headers: getHeaders(),
-        body: JSON.stringify({ recipe_id: recipeId, date: today, meal_type: mealType }),
+        body: JSON.stringify({ recipe_id: recipeId, date: today, meal_type: mealType, planned_portions: portions }),
       });
+      if (!res.ok) throw new Error();
       setSelectedRecipe(null);
+      setPlannedPortions("1");
       setSearchQuery("");
       setShowSearch(false);
       loadData();
@@ -121,7 +142,8 @@ export default function DashboardScreen() {
 
   const removeMeal = async (id: number) => {
     try {
-      await apiRequest(apiUrl(`/api/meal-plans?id=${id}`), { method: "DELETE", headers: getHeaders() });
+      const res = await apiRequest(apiUrl(`/api/meal-plans?id=${id}`), { method: "DELETE", headers: getHeaders() });
+      if (!res.ok) throw new Error();
       loadData();
     } catch { Alert.alert("Erreur", "Impossible de supprimer le repas"); }
   };
@@ -140,7 +162,7 @@ export default function DashboardScreen() {
           </View>
           <View style={s.calorieRing}>
             <Text style={s.calorieValue}>{Math.round(todayCalories)}</Text>
-            <Text style={s.calorieUnit}>/{calorieGoal} kcal</Text>
+            <Text style={s.calorieUnit}>/{calorieGoal} kcal mangées</Text>
           </View>
         </View>
 
@@ -164,6 +186,10 @@ export default function DashboardScreen() {
           <TouchableOpacity style={s.actionChip} onPress={() => setShowSearch(!showSearch)}>
             <Ionicons name="search-outline" size={18} color={colors.primary[600]} />
             <Text style={s.actionChipText}>Chercher</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={s.actionChip} onPress={() => router.push("/journal-alimentaire")}>
+            <Ionicons name="nutrition-outline" size={18} color={colors.primary[600]} />
+            <Text style={s.actionChipText}>Journal</Text>
           </TouchableOpacity>
           <TouchableOpacity style={s.actionChip} onPress={() => router.push("/creation-recette")}>
             <Ionicons name="add-circle-outline" size={18} color={colors.accent[500]} />
@@ -203,7 +229,7 @@ export default function DashboardScreen() {
                 <View style={{ flex: 1 }}>
                   <Text style={s.searchResultName}>{r.name}</Text>
                   <Text style={s.searchResultMeta}>
-                    {r.calories} kcal
+                    {Math.round(perPortion(r))} kcal / portion
                     {r.prep_time ? ` · ${r.prep_time + (r.cook_time || 0)} min` : ""}
                   </Text>
                 </View>
@@ -219,11 +245,20 @@ export default function DashboardScreen() {
             <View style={s.modalCard}>
               <View style={s.modalHeader}>
                 <Text style={s.modalTitle}>Ajouter un repas</Text>
-                <TouchableOpacity onPress={() => setSelectedRecipe(null)}>
+                <TouchableOpacity onPress={() => { setSelectedRecipe(null); setPlannedPortions("1"); }}>
                   <Ionicons name="close" size={24} color={colors.gray[500]} />
                 </TouchableOpacity>
               </View>
               <Text style={s.modalRecipeName}>{selectedRecipe?.name}</Text>
+              <Text style={s.modalSubtitle}>Portions prévues</Text>
+              <View style={s.portionRow}>
+                <PortionStepper value={plannedPortions} onChange={setPlannedPortions} />
+                {selectedRecipe && validPortions(parseDecimal(plannedPortions)) && (
+                  <Text style={s.portionKcal}>
+                    {Math.round(perPortion(selectedRecipe) * parseDecimal(plannedPortions))} kcal
+                  </Text>
+                )}
+              </View>
               <Text style={s.modalSubtitle}>Type de repas</Text>
               <View style={s.mealTypesGrid}>
                 {mealTypes.map((mt) => (
@@ -254,6 +289,7 @@ export default function DashboardScreen() {
               <TouchableOpacity
                 style={s.confirmBtn}
                 onPress={() => selectedRecipe && addMeal(selectedRecipe.id, selectedMealType)}
+                disabled={!validPortions(parseDecimal(plannedPortions))}
               >
                 <Text style={s.confirmTxt}>Ajouter au planning</Text>
               </TouchableOpacity>
@@ -279,17 +315,35 @@ export default function DashboardScreen() {
             {todayMeals.map((meal) => {
               const mt = mealTypes.find((t) => t.key === meal.meal_type);
               return (
-                <View key={meal.id} style={s.mealCard}>
-                  <View style={[s.mealIcon, { backgroundColor: (mt?.color || colors.gray[400]) + "18" }]}>
-                    <Ionicons name={(mt?.icon || "restaurant-outline") as any} size={18} color={mt?.color || colors.gray[500]} />
+                <View key={meal.id} style={s.mealCardColumn}>
+                  <View style={s.mealCardRow}>
+                    <View style={[s.mealIcon, { backgroundColor: (mt?.color || colors.gray[400]) + "18" }]}>
+                      <Ionicons name={(mt?.icon || "restaurant-outline") as any} size={18} color={mt?.color || colors.gray[500]} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={s.mealName}>{meal.recipe_name}</Text>
+                      <Text style={s.mealMeta}>
+                        {mt?.label} · {formatNumber(meal.planned_portions, 2)} portion(s) prévue(s) ·{" "}
+                        {Math.round(meal.calories * meal.planned_portions)} kcal
+                      </Text>
+                    </View>
+                    {meal.consumed_portions === 0 && (
+                      <TouchableOpacity
+                        onPress={() => removeMeal(meal.id)}
+                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                        accessibilityLabel="Supprimer le repas"
+                      >
+                        <Ionicons name="trash-outline" size={18} color={colors.gray[400]} />
+                      </TouchableOpacity>
+                    )}
                   </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={s.mealName}>{meal.recipe_name}</Text>
-                    <Text style={s.mealMeta}>{mt?.label} · {meal.calories} kcal</Text>
-                  </View>
-                  <TouchableOpacity onPress={() => removeMeal(meal.id)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                    <Ionicons name="trash-outline" size={18} color={colors.gray[400]} />
-                  </TouchableOpacity>
+                  <MealConsumption
+                    key={meal.consumed_portions}
+                    id={meal.id}
+                    planned={meal.planned_portions}
+                    consumed={meal.consumed_portions}
+                    onChange={loadData}
+                  />
                 </View>
               );
             })}
@@ -305,7 +359,7 @@ export default function DashboardScreen() {
             const dateStr = format(day, "yyyy-MM-dd");
             const dayMeals = weekMeals.filter((m) => m.date === dateStr);
             const isToday = dateStr === today;
-            const dayCals = dayMeals.reduce((sum, m) => sum + (m.calories || 0), 0);
+            const dayCals = Math.round(dayMeals.reduce((sum, m) => sum + (m.calories || 0) * m.planned_portions, 0));
             return (
               <View key={dateStr} style={[s.dayCard, isToday && s.dayCardToday]}>
                 <Text style={[s.dayName, isToday && { color: colors.primary[600] }]}>
@@ -364,6 +418,8 @@ const s = StyleSheet.create({
   mealTypesGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
   mealTypeChip: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 12, paddingHorizontal: 16, borderRadius: 12, borderWidth: 1.5, borderColor: colors.gray[200], minWidth: "45%" },
   mealTypeLabel: { fontSize: 14, fontWeight: "600", color: colors.gray[700] },
+  portionRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 20 },
+  portionKcal: { fontSize: 13, fontWeight: "700", color: colors.gray[600] },
   confirmBtn: { marginTop: 24, backgroundColor: colors.primary[500], borderRadius: 14, paddingVertical: 16, alignItems: "center" },
   confirmTxt: { fontSize: 16, fontWeight: "700", color: colors.white },
 
@@ -380,7 +436,8 @@ const s = StyleSheet.create({
 
   // Meal cards
   mealsList: { paddingHorizontal: 20, gap: 8 },
-  mealCard: { backgroundColor: colors.white, borderRadius: 16, padding: 14, flexDirection: "row", alignItems: "center", gap: 14, shadowColor: "#000", shadowOpacity: 0.03, shadowRadius: 6, elevation: 1 },
+  mealCardColumn: { backgroundColor: colors.white, borderRadius: 16, padding: 14, shadowColor: "#000", shadowOpacity: 0.03, shadowRadius: 6, elevation: 1 },
+  mealCardRow: { flexDirection: "row", alignItems: "center", gap: 14 },
   mealIcon: { width: 42, height: 42, borderRadius: 12, justifyContent: "center", alignItems: "center" },
   mealName: { fontSize: 15, fontWeight: "700", color: colors.gray[900] },
   mealMeta: { fontSize: 12, color: colors.gray[500], marginTop: 2 },

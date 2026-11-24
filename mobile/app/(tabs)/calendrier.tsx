@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -8,11 +8,14 @@ import {
   Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useFocusEffect, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { format, addDays, startOfWeek, addWeeks } from "date-fns";
 import { fr } from "date-fns/locale";
 import { apiUrl, getHeaders, apiRequest } from "../../src/lib/api";
 import { colors } from "../../src/theme/colors";
+import { MealConsumption } from "../../src/components/MealConsumption";
+import { formatNumber } from "../../src/lib/food-journal";
 
 interface MealPlan {
   id: number;
@@ -26,6 +29,8 @@ interface MealPlan {
   prep_time: number;
   cook_time: number;
   servings: number;
+  planned_portions: number;
+  consumed_portions: number;
 }
 
 const mealTypeColors: Record<string, { bg: string; text: string }> = {
@@ -43,6 +48,7 @@ const mealTypeLabels: Record<string, string> = {
 };
 
 export default function CalendrierScreen() {
+  const router = useRouter();
   const [weekOffset, setWeekOffset] = useState(0);
   const [meals, setMeals] = useState<MealPlan[]>([]);
   const [expandedDay, setExpandedDay] = useState<string | null>(format(new Date(), "yyyy-MM-dd"));
@@ -55,19 +61,19 @@ export default function CalendrierScreen() {
     const end = format(addDays(monday, 6), "yyyy-MM-dd");
     try {
       const res = await apiRequest(apiUrl(`/api/meal-plans?startDate=${start}&endDate=${end}`), { headers: getHeaders() });
-      setMeals(await res.json());
+      const data = await res.json();
+      setMeals(Array.isArray(data) ? data : []);
     } catch {
       // API not reachable
     }
   }, [weekOffset]);
 
-  useEffect(() => {
-    loadMeals();
-  }, [loadMeals]);
+  useFocusEffect(useCallback(() => { loadMeals(); }, [loadMeals]));
 
   const removeMeal = async (id: number) => {
     try {
-      await apiRequest(apiUrl(`/api/meal-plans?id=${id}`), { method: "DELETE", headers: getHeaders() });
+      const res = await apiRequest(apiUrl(`/api/meal-plans?id=${id}`), { method: "DELETE", headers: getHeaders() });
+      if (!res.ok) throw new Error();
       loadMeals();
     } catch {
       Alert.alert("Erreur", "Impossible de supprimer le repas");
@@ -76,10 +82,10 @@ export default function CalendrierScreen() {
 
   const weekTotals = meals.reduce(
     (acc, m) => ({
-      calories: acc.calories + (m.calories || 0),
-      protein: acc.protein + (m.protein || 0),
-      carbs: acc.carbs + (m.carbs || 0),
-      fat: acc.fat + (m.fat || 0),
+      calories: acc.calories + (m.calories || 0) * m.planned_portions,
+      protein: acc.protein + (m.protein || 0) * m.planned_portions,
+      carbs: acc.carbs + (m.carbs || 0) * m.planned_portions,
+      fat: acc.fat + (m.fat || 0) * m.planned_portions,
     }),
     { calories: 0, protein: 0, carbs: 0, fat: 0 }
   );
@@ -108,7 +114,7 @@ export default function CalendrierScreen() {
         {/* Week totals */}
         <View style={s.totalsCard}>
           <View style={s.totalItem}>
-            <Text style={s.totalValue}>{weekTotals.calories}</Text>
+            <Text style={s.totalValue}>{Math.round(weekTotals.calories)}</Text>
             <Text style={s.totalLabel}>kcal</Text>
           </View>
           <View style={s.totalDivider} />
@@ -128,22 +134,24 @@ export default function CalendrierScreen() {
           </View>
         </View>
 
+        <Text style={s.totalsHint}>Apports prévus cette semaine, selon les portions planifiées</Text>
+
         {/* Day cards */}
         {days.map((day) => {
           const dateStr = format(day, "yyyy-MM-dd");
           const dayMeals = meals.filter((m) => m.date === dateStr);
           const isToday = dateStr === today;
           const expanded = expandedDay === dateStr;
-          const dayCals = dayMeals.reduce((sum, m) => sum + (m.calories || 0), 0);
+          const dayCals = Math.round(dayMeals.reduce((sum, m) => sum + (m.calories || 0) * m.planned_portions, 0));
+          const isPastOrToday = dateStr <= today;
 
           return (
-            <TouchableOpacity
-              key={dateStr}
-              activeOpacity={0.7}
-              onPress={() => setExpandedDay(expanded ? null : dateStr)}
-              style={[s.dayCard, isToday && s.dayCardToday]}
-            >
-              <View style={s.dayHeader}>
+            <View key={dateStr} style={[s.dayCard, isToday && s.dayCardToday]}>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => setExpandedDay(expanded ? null : dateStr)}
+                style={s.dayHeader}
+              >
                 <View>
                   <Text style={[s.dayName, isToday && { color: colors.primary[600] }]}>
                     {format(day, "EEEE d MMMM", { locale: fr })}
@@ -157,31 +165,45 @@ export default function CalendrierScreen() {
                   size={20}
                   color={colors.gray[400]}
                 />
-              </View>
+              </TouchableOpacity>
 
               {expanded && dayMeals.length > 0 && (
                 <View style={s.mealsContainer}>
                   {dayMeals.map((meal) => {
                     const mtc = mealTypeColors[meal.meal_type] || mealTypeColors.collation;
                     return (
-                      <View key={meal.id} style={s.mealRow}>
-                        <View style={[s.mealTypeBadge, { backgroundColor: mtc.bg }]}>
-                          <Text style={[s.mealTypeText, { color: mtc.text }]}>
-                            {mealTypeLabels[meal.meal_type] || meal.meal_type}
-                          </Text>
+                      <View key={meal.id} style={s.mealBlock}>
+                        <View style={s.mealRow}>
+                          <View style={[s.mealTypeBadge, { backgroundColor: mtc.bg }]}>
+                            <Text style={[s.mealTypeText, { color: mtc.text }]}>
+                              {mealTypeLabels[meal.meal_type] || meal.meal_type}
+                            </Text>
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text style={s.mealName}>{meal.recipe_name}</Text>
+                            <Text style={s.mealDetail}>
+                              {formatNumber(meal.planned_portions, 2)} portion(s) prévue(s) · {Math.round(meal.calories)} kcal / portion
+                              {meal.prep_time || meal.cook_time
+                                ? ` · ${(meal.prep_time || 0) + (meal.cook_time || 0)} min`
+                                : ""}
+                            </Text>
+                          </View>
+                          {meal.consumed_portions === 0 && (
+                            <TouchableOpacity onPress={() => removeMeal(meal.id)} hitSlop={8} accessibilityLabel="Supprimer le repas">
+                              <Ionicons name="trash-outline" size={18} color={colors.red[400]} />
+                            </TouchableOpacity>
+                          )}
                         </View>
-                        <View style={{ flex: 1 }}>
-                          <Text style={s.mealName}>{meal.recipe_name}</Text>
-                          <Text style={s.mealDetail}>
-                            {meal.calories} kcal
-                            {meal.prep_time || meal.cook_time
-                              ? ` · ${(meal.prep_time || 0) + (meal.cook_time || 0)} min`
-                              : ""}
-                          </Text>
-                        </View>
-                        <TouchableOpacity onPress={() => removeMeal(meal.id)}>
-                          <Ionicons name="trash-outline" size={18} color={colors.red[400]} />
-                        </TouchableOpacity>
+                        {/* On ne peut déclarer avoir mangé qu'un repas d'aujourd'hui ou d'un jour passé */}
+                        {isPastOrToday && (
+                          <MealConsumption
+                            key={meal.consumed_portions}
+                            id={meal.id}
+                            planned={meal.planned_portions}
+                            consumed={meal.consumed_portions}
+                            onChange={loadMeals}
+                          />
+                        )}
                       </View>
                     );
                   })}
@@ -191,7 +213,17 @@ export default function CalendrierScreen() {
               {expanded && dayMeals.length === 0 && (
                 <Text style={s.noMeals}>Aucun repas planifié</Text>
               )}
-            </TouchableOpacity>
+
+              {expanded && isPastOrToday && (
+                <TouchableOpacity
+                  style={s.journalLink}
+                  onPress={() => router.push({ pathname: "/journal-alimentaire", params: { date: dateStr } })}
+                >
+                  <Ionicons name="nutrition-outline" size={16} color={colors.primary[600]} />
+                  <Text style={s.journalLinkText}>Voir ou saisir les aliments consommés</Text>
+                </TouchableOpacity>
+              )}
+            </View>
           );
         })}
 
@@ -219,7 +251,11 @@ const s = StyleSheet.create({
   dayName: { fontSize: 14, fontWeight: "700", color: colors.gray[900], textTransform: "capitalize" },
   dayInfo: { fontSize: 12, color: colors.gray[500], marginTop: 2 },
   mealsContainer: { marginTop: 12, borderTopWidth: 1, borderTopColor: colors.gray[100], paddingTop: 12 },
-  mealRow: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 10 },
+  mealBlock: { marginBottom: 14 },
+  mealRow: { flexDirection: "row", alignItems: "center", gap: 10 },
+  totalsHint: { marginHorizontal: 24, marginTop: 6, fontSize: 11, color: colors.gray[400] },
+  journalLink: { marginTop: 12, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 10, borderRadius: 10, backgroundColor: colors.primary[50] },
+  journalLinkText: { fontSize: 13, fontWeight: "600", color: colors.primary[600] },
   mealTypeBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
   mealTypeText: { fontSize: 10, fontWeight: "700" },
   mealName: { fontSize: 13, fontWeight: "600", color: colors.gray[900] },
