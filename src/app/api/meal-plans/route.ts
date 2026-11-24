@@ -56,16 +56,19 @@ export async function POST(request: Request) {
     if (!authUser) return NextResponse.json(UNAUTHENTICATED_RESPONSE, { status: 401 });
     const userId = authUser.id;
     const body = await request.json();
-    const { recipe_id, date, meal_type } = body;
+    const { recipe_id, date, meal_type, planned_portions = 1 } = body;
+    if (!Number.isFinite(planned_portions) || planned_portions <= 0 || planned_portions > 100) {
+      return NextResponse.json({ error: "Portion prévue invalide" }, { status: 400 });
+    }
 
     if (!recipe_id || !date) {
       return NextResponse.json({ error: "recipe_id et date sont requis" }, { status: 400 });
     }
 
     const { rows: planRows } = await query(
-      `INSERT INTO meal_plans (user_id, recipe_id, date, meal_type)
-       SELECT $1::integer, id, $3, $4 FROM recipes WHERE id = $2 AND (is_public OR created_by = $1) RETURNING id`,
-      [userId, recipe_id, date, meal_type || "dejeuner"]
+      `INSERT INTO meal_plans (user_id, recipe_id, date, meal_type, planned_portions)
+       SELECT $1::integer, id, $3, $4, $5 FROM recipes WHERE id = $2 AND (is_public OR created_by = $1) RETURNING id`,
+      [userId, recipe_id, date, meal_type || "dejeuner", planned_portions]
     );
     if (!planRows.length) return NextResponse.json({ error: "Recette introuvable" }, { status: 404 });
     const planId = planRows[0].id;

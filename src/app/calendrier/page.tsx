@@ -11,6 +11,7 @@ import { apiUrl } from "@/lib/api";
 
 interface MealPlan {
   consumed_portions: number;
+  planned_portions: number;
   id: number;
   recipe_id: number;
   recipe_name: string;
@@ -58,10 +59,10 @@ export default function CalendrierPage() {
   };
 
   // Week totals
-  const weekCalories = meals.reduce((sum, m) => sum + (m.calories || 0), 0);
-  const weekProtein = meals.reduce((sum, m) => sum + (m.protein || 0), 0);
-  const weekCarbs = meals.reduce((sum, m) => sum + (m.carbs || 0), 0);
-  const weekFat = meals.reduce((sum, m) => sum + (m.fat || 0), 0);
+  const weekCalories = meals.reduce((sum, m) => sum + (m.calories || 0) * m.planned_portions, 0);
+  const weekProtein = meals.reduce((sum, m) => sum + (m.protein || 0) * m.planned_portions, 0);
+  const weekCarbs = meals.reduce((sum, m) => sum + (m.carbs || 0) * m.planned_portions, 0);
+  const weekFat = meals.reduce((sum, m) => sum + (m.fat || 0) * m.planned_portions, 0);
 
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
@@ -119,7 +120,7 @@ export default function CalendrierPage() {
           const dayMeals = meals.filter((m) => m.date === dateStr);
           const isToday = dateStr === today;
           const isSelected = selectedDay === dateStr;
-          const dayCalories = dayMeals.reduce((sum, m) => sum + (m.calories || 0), 0);
+          const dayCalories = dayMeals.reduce((sum, m) => sum + (m.calories || 0) * m.planned_portions, 0);
 
           return (
             <div key={dateStr}>
@@ -204,10 +205,10 @@ export default function CalendrierPage() {
                               </span>
                             )}
                             <span className="text-xs text-gray-500 flex items-center gap-0.5">
-                              <Users size={10} /> 1 portion prévue
+                              <Users size={10} /> {meal.planned_portions.toLocaleString("fr-FR")} portion(s) prévue(s)
                             </span>
                           </div>
-                          {dateStr <= today && <MealConsumption key={meal.consumed_portions} id={meal.id} portions={meal.consumed_portions} onChange={loadMeals} />}
+                          {dateStr <= today && <MealConsumption key={meal.consumed_portions} id={meal.id} planned={meal.planned_portions} portions={meal.consumed_portions} onChange={loadMeals} />}
                         </div>
                         <button
                           aria-label="Supprimer le repas" disabled={meal.consumed_portions > 0}

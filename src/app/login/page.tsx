@@ -1,5 +1,7 @@
 "use client";
 
+import { GoalSelect } from "@/components/GoalSelect";
+import { GOAL_LABELS, goalIssue, type NutritionGoal } from "@/lib/nutrition";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
@@ -20,6 +22,7 @@ export default function LoginPage() {
   const [height, setHeight] = useState<number | "">("");
   const [gender, setGender] = useState<Gender | "">("");
   const [activityLevel, setActivityLevel] = useState<ActivityLevel | "">("");
+  const [goal, setGoal] = useState<NutritionGoal>("maintien");
   const [sportType, setSportType] = useState<SportType>("aucun");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -43,6 +46,7 @@ export default function LoginPage() {
         gender: gender || undefined,
         activity_level: activityLevel || undefined,
         sport_type: sportType,
+        nutrition_goal: goal,
       });
     } else {
       result = await login(email, password);
@@ -57,7 +61,8 @@ export default function LoginPage() {
   };
 
   const canProceedToStep2 = firstName && lastName && email && password.length >= 6;
-  const canProceedToStep3 = age && weight && height && gender && activityLevel;
+  const issue = goalIssue(goal, Number(age), Number(weight), Number(height));
+  const canProceedToStep3 = !issue && age && weight && height && gender && activityLevel;
 
   // Calculate preview of nutritional goals
   const nutritionPreview = canProceedToStep3
@@ -67,6 +72,7 @@ export default function LoginPage() {
         height: Number(height),
         gender: gender as Gender,
         activityLevel: activityLevel as ActivityLevel,
+        goal,
         sportType: sportType,
       })
     : null;
@@ -98,6 +104,7 @@ export default function LoginPage() {
     setGender("");
     setActivityLevel("");
     setSportType("aucun");
+    setGoal("maintien");
     setError("");
   };
 
@@ -316,6 +323,8 @@ export default function LoginPage() {
                 </select>
               </div>
 
+              <GoalSelect value={goal} onChange={setGoal} />
+              {issue && <p role="status" className="text-xs text-amber-700">{issue}</p>}
               <div>
                 <label className="text-xs text-gray-500 font-medium">Sport pratiqué</label>
                 <select
@@ -340,7 +349,7 @@ export default function LoginPage() {
                 <div className="flex items-center gap-2 mb-3">
                   <Calculator size={18} className="text-primary-600" />
                   <h3 className="font-semibold text-primary-800 text-sm">
-                    Vos besoins calculés
+                    {GOAL_LABELS[goal]} · estimation journalière
                   </h3>
                 </div>
 

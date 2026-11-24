@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
 
     const { rows } = await query(
       `SELECT i.id, i.name, i.category, i.unit, i.barcode, ri.unit AS recipe_unit,
-              SUM(ri.quantity / GREATEST(r.servings, 1)) AS needed,
+              SUM(ri.quantity * mp.planned_portions / GREATEST(r.servings, 1)) AS needed,
               pi.quantity AS stock, pi.unit AS stock_unit
        FROM meal_plans mp
        JOIN recipes r ON mp.recipe_id = r.id

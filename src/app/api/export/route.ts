@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
 
     if (type === "all" || type === "meal-plans") {
       const { rows: mealPlans } = await query(
-        `SELECT mp.date, mp.meal_type, mp.consumed_portions, mp.nutrition_per_portion, r.name as recipe_name, r.calories
+        `SELECT mp.date, mp.meal_type, mp.planned_portions, mp.consumed_portions, mp.nutrition_per_portion, r.name as recipe_name, r.calories
          FROM meal_plans mp
          JOIN recipes r ON mp.recipe_id = r.id
          WHERE mp.user_id = $1

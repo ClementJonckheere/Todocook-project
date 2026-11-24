@@ -204,6 +204,10 @@ async function runMigrations(client: any) {
   `);
 
   await client.query(`
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS nutrition_goal TEXT NOT NULL DEFAULT 'maintien'
+      CHECK (nutrition_goal IN ('maintien', 'prise_masse', 'perte_poids'));
+    ALTER TABLE meal_plans ADD COLUMN IF NOT EXISTS planned_portions DOUBLE PRECISION NOT NULL DEFAULT 1
+      CHECK (planned_portions > 0 AND planned_portions <= 100);
     ALTER TABLE meal_plans ADD COLUMN IF NOT EXISTS consumed_portions DOUBLE PRECISION NOT NULL DEFAULT 0 CHECK (consumed_portions >= 0);
     ALTER TABLE meal_plans ADD COLUMN IF NOT EXISTS nutrition_per_portion JSONB;
     CREATE OR REPLACE VIEW consumed_daily_totals AS

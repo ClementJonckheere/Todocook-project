@@ -1,5 +1,7 @@
 "use client";
 
+import { GoalSelect } from "@/components/GoalSelect";
+import { GOAL_LABELS, goalIssue, type NutritionGoal } from "@/lib/nutrition";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -31,6 +33,7 @@ interface UserData {
   gender: string | null;
   activity_level: string | null;
   sport_type: string | null;
+  nutrition_goal: NutritionGoal;
   daily_calorie_goal: number;
   daily_protein_goal: number;
   daily_carbs_goal: number;
@@ -51,6 +54,7 @@ export default function ProfilePage() {
   const { theme, toggleTheme } = useTheme();
   const [user, setUser] = useState<UserData | null>(null);
   const [logs, setLogs] = useState<DailyLog[]>([]);
+  const [saveError, setSaveError] = useState("");
   const [editing, setEditing] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
   const [form, setForm] = useState<Partial<UserData>>({});
@@ -71,8 +75,12 @@ export default function ProfilePage() {
 
   const canRecalculate = form.age && form.weight && form.height && form.gender && form.activity_level;
 
-  const recalculateGoals = () => {
-    if (!canRecalculate) return;
+  const issue = goalIssue(form.nutrition_goal ?? "maintien", Number(form.age), Number(form.weight), Number(form.height));
+  const recalculateGoals = (goal = form.nutrition_goal ?? "maintien") => {
+    if (!canRecalculate || goalIssue(goal, Number(form.age), Number(form.weight), Number(form.height))) {
+      setForm({ ...form, nutrition_goal: goal });
+      return;
+    }
 
     setRecalculating(true);
     const result = calculateNutrition({
@@ -81,11 +89,13 @@ export default function ProfilePage() {
       height: Number(form.height),
       gender: form.gender as Gender,
       activityLevel: form.activity_level as ActivityLevel,
+      goal,
       sportType: (form.sport_type as SportType) || "aucun",
     });
 
     setForm({
       ...form,
+      nutrition_goal: goal,
       daily_calorie_goal: result.dailyCalories,
       daily_protein_goal: result.dailyProtein,
       daily_carbs_goal: result.dailyCarbs,
@@ -96,6 +106,7 @@ export default function ProfilePage() {
   };
 
   const saveProfile = async () => {
+    setSaveError("");
     try {
       const res = await fetch(apiUrl("/api/users"), {
         method: "PUT",
@@ -103,9 +114,13 @@ export default function ProfilePage() {
         body: JSON.stringify(form),
       });
       const data = await res.json();
+      if (!res.ok) throw new Error(data.error || data.errors?.[0]?.message || "Vérifiez les informations du profil.");
       setUser(data);
+      setForm(data);
       setEditing(false);
-    } catch {}
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : "Enregistrement impossible.");
+    }
   };
 
   const handleExport = async () => {
@@ -253,13 +268,15 @@ export default function ProfilePage() {
                     </select>
                   </div>
 
+                  <GoalSelect value={form.nutrition_goal ?? "maintien"} onChange={recalculateGoals} />
+                  {issue && <p role="status">{issue}</p>}
                   {/* Nutritional Goals Section */}
                   <div className="border-t dark:border-gray-700 pt-3 mt-3">
                     <div className="flex items-center justify-between mb-2">
                       <p className="text-xs font-medium text-gray-600 dark:text-gray-300">Objectifs journaliers</p>
                       <button
                         type="button"
-                        onClick={recalculateGoals}
+                        onClick={() => recalculateGoals()}
                         disabled={!canRecalculate || recalculating}
                         className="flex items-center gap-1 text-xs text-primary-600 dark:text-primary-400 hover:text-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
@@ -295,13 +312,15 @@ export default function ProfilePage() {
                       </div>
                     </div>
                   </div>
-                  <button onClick={saveProfile}
+                  {saveError && <p role="alert">{saveError}</p>}
+                  <button disabled={Boolean(issue)} onClick={saveProfile}
                     className="w-full bg-primary-500 text-white py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-2">
                     <Save size={16} /> Enregistrer
                   </button>
                 </>
               ) : (
                 <>
+                  <p className="font-medium">{GOAL_LABELS[user.nutrition_goal ?? "maintien"]}</p>
                   <div className="grid grid-cols-3 gap-3 text-center">
                     <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-2">
                       <p className="text-lg font-bold text-gray-900 dark:text-white">{user.age || "-"}</p>

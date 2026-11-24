@@ -31,6 +31,7 @@ interface RegisterData {
   gender?: string;
   activity_level?: string;
   sport_type?: string;
+  nutrition_goal?: import("@/lib/nutrition").NutritionGoal;
 }
 
 interface AuthContextType {

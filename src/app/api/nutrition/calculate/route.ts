@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { calculateNutrition, type Gender, type ActivityLevel, type SportType } from "@/lib/nutrition";
+import { goalIssue, isNutritionGoal, validActivityProfile, calculateNutrition, type Gender, type ActivityLevel, type SportType } from "@/lib/nutrition";
 
 export async function POST(request: Request) {
   try {
@@ -25,12 +25,19 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "La taille doit être entre 100 et 250 cm" }, { status: 400 });
     }
 
+    const goal = body.nutrition_goal === undefined ? "maintien" : body.nutrition_goal;
+    const issue = isNutritionGoal(goal) ? goalIssue(goal, Number(age), Number(weight), Number(height)) : "Objectif invalide.";
+    if (issue) return NextResponse.json({ error: issue }, { status: 400 });
+    if (!validActivityProfile(gender, activity_level, sport_type)) {
+      return NextResponse.json({ error: "Profil d’activité invalide." }, { status: 400 });
+    }
     const result = calculateNutrition({
       age: Number(age),
       weight: Number(weight),
       height: Number(height),
       gender: gender as Gender,
       activityLevel: activity_level as ActivityLevel,
+      goal,
       sportType: (sport_type as SportType) || "aucun",
     });
 
