@@ -10,9 +10,16 @@ export async function GET(request: NextRequest) {
     if (!(await getAuthUser())) return NextResponse.json(UNAUTHENTICATED_RESPONSE, { status: 401 });
     const { searchParams } = new URL(request.url);
     const search = searchParams.get("search");
+    const id = searchParams.get("id");
 
     let result;
-    if (search) {
+    if (id !== null) {
+      const ingredientId = Number(id);
+      if (!Number.isSafeInteger(ingredientId) || ingredientId <= 0 || ingredientId > 2147483647) {
+        return NextResponse.json({ error: "Identifiant invalide" }, { status: 400 });
+      }
+      result = await query("SELECT * FROM ingredients WHERE id = $1", [ingredientId]);
+    } else if (search) {
       result = await query(
         "SELECT * FROM ingredients WHERE name ILIKE $1 OR brand ILIKE $1 ORDER BY name LIMIT 50",
         [`%${search}%`]
