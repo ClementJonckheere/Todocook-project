@@ -72,17 +72,19 @@ export default function DashboardPage() {
 
   const loadTodayData = useCallback(async () => {
     try {
-      const [userRes, mealsRes] = await Promise.all([
+      const [userRes, mealsRes, logRes] = await Promise.all([
         fetch(apiUrl("/api/users")),
         fetch(apiUrl(`/api/meal-plans?startDate=${today}&endDate=${today}`)),
+        fetch(apiUrl(`/api/daily-logs?date=${today}`)),
       ]);
       const userData = await userRes.json();
       const mealsData = await mealsRes.json();
       setUser(userData);
       setTodayMeals(Array.isArray(mealsData) ? mealsData : []);
-      setTodayCalories(
-        (Array.isArray(mealsData) ? mealsData : []).reduce((sum: number, m: MealPlan) => sum + (m.calories || 0) * m.consumed_portions, 0)
-      );
+      if (logRes.ok) {
+        const logs = await logRes.json();
+        setTodayCalories(logs[0]?.calories ?? 0);
+      }
     } catch (err) {
       console.error("Failed to load today's data:", err);
     }
@@ -232,6 +234,12 @@ export default function DashboardPage() {
             />
           </div>
         </div>
+      </div>
+
+      <div className="px-4 mt-3">
+        <Link href="/journal-alimentaire" className="inline-flex items-center gap-2 rounded-xl bg-primary-600 px-4 py-2.5 font-semibold text-white">
+          <Plus size={18} /> Saisir un aliment
+        </Link>
       </div>
 
       {/* Quick actions */}

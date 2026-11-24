@@ -215,13 +215,36 @@ async function runMigrations(client: any) {
       CHECK (planned_portions > 0 AND planned_portions <= 100);
     ALTER TABLE meal_plans ADD COLUMN IF NOT EXISTS consumed_portions DOUBLE PRECISION NOT NULL DEFAULT 0 CHECK (consumed_portions >= 0);
     ALTER TABLE meal_plans ADD COLUMN IF NOT EXISTS nutrition_per_portion JSONB;
+    CREATE TABLE IF NOT EXISTS food_journal (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      entry_key UUID NOT NULL,
+      date TEXT NOT NULL,
+      meal_type TEXT NOT NULL,
+      ingredient_id INTEGER REFERENCES ingredients(id) ON DELETE SET NULL,
+      name TEXT NOT NULL,
+      brand TEXT,
+      grams DOUBLE PRECISION NOT NULL CHECK (grams > 0 AND grams <= 10000),
+      calories_100g DOUBLE PRECISION NOT NULL,
+      protein_100g DOUBLE PRECISION NOT NULL,
+      carbs_100g DOUBLE PRECISION NOT NULL,
+      fat_100g DOUBLE PRECISION NOT NULL,
+      UNIQUE (user_id, entry_key)
+    );
+    CREATE INDEX IF NOT EXISTS idx_food_journal_user_date ON food_journal (user_id, date);
     CREATE OR REPLACE VIEW consumed_daily_totals AS
-      SELECT user_id, date,
-        SUM(consumed_portions * (nutrition_per_portion->>'calories')::float8) AS calories,
-        SUM(consumed_portions * (nutrition_per_portion->>'protein')::float8) AS protein,
-        SUM(consumed_portions * (nutrition_per_portion->>'carbs')::float8) AS carbs,
-        SUM(consumed_portions * (nutrition_per_portion->>'fat')::float8) AS fat
-      FROM meal_plans WHERE consumed_portions > 0 GROUP BY user_id, date;
+      SELECT user_id, date, SUM(calories) AS calories, SUM(protein) AS protein,
+        SUM(carbs) AS carbs, SUM(fat) AS fat
+      FROM (
+        SELECT user_id, date, consumed_portions * (nutrition_per_portion->>'calories')::float8 AS calories,
+          consumed_portions * (nutrition_per_portion->>'protein')::float8 AS protein,
+          consumed_portions * (nutrition_per_portion->>'carbs')::float8 AS carbs,
+          consumed_portions * (nutrition_per_portion->>'fat')::float8 AS fat
+        FROM meal_plans WHERE consumed_portions > 0
+        UNION ALL
+        SELECT user_id, date, calories_100g * grams / 100, protein_100g * grams / 100,
+          carbs_100g * grams / 100, fat_100g * grams / 100 FROM food_journal
+      ) consumed GROUP BY user_id, date;
   `);
 }
 
