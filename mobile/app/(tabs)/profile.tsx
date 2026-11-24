@@ -58,18 +58,17 @@ export default function ProfileScreen() {
   const loadData = async () => {
     try {
       const today = format(new Date(), "yyyy-MM-dd");
-      const [userRes, logsRes, mealsRes] = await Promise.all([
+      const [userRes, logsRes, todayRes] = await Promise.all([
         fetch(apiUrl("/api/users"), { headers: getHeaders() }),
         fetch(apiUrl("/api/daily-logs?days=30"), { headers: getHeaders() }),
-        fetch(apiUrl(`/api/meal-plans?userId=1&startDate=${today}&endDate=${today}`), { headers: getHeaders() }),
+        fetch(apiUrl(`/api/daily-logs?date=${today}`), { headers: getHeaders() }),
       ]);
       const userData = await userRes.json();
       const logsData = await logsRes.json();
-      const mealsData = await mealsRes.json();
+      const todayLogs = await todayRes.json();
       setUser(userData);
       setLogs(logsData);
-      const mealsArray = Array.isArray(mealsData) ? mealsData : [];
-      setTodayCalories(mealsArray.reduce((sum: number, m: { calories?: number; consumed_portions: number }) => sum + (m.calories || 0) * m.consumed_portions, 0));
+      setTodayCalories(Math.round(todayLogs[0]?.calories ?? 0));
       setForm({
         age: String(userData.age || ""),
         weight: String(userData.weight || ""),

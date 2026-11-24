@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import {
   ChevronLeft, ChevronRight, Flame, X, Clock, Users,
 } from "lucide-react";
+import Link from "next/link";
 import { format, addDays, startOfWeek, addWeeks, subWeeks } from "date-fns";
 import { fr } from "date-fns/locale";
 import { MealConsumption } from "@/components/MealConsumption";
@@ -178,6 +179,10 @@ export default function CalendrierPage() {
                 )}
               </button>
 
+              {isSelected && dateStr <= today && <Link href={`/journal-alimentaire?date=${dateStr}`}
+                className="my-2 inline-block rounded-lg bg-white px-3 py-2 text-sm font-medium text-primary-700">
+                Voir ou saisir les aliments consommés
+              </Link>}
               {/* Expanded day detail */}
               {isSelected && dayMeals.length > 0 && (
                 <div className="mt-1 space-y-2 pl-2">

@@ -70,10 +70,15 @@ export async function GET(request: NextRequest) {
         "SELECT * FROM consumed_daily_totals WHERE user_id = $1 ORDER BY date", [userId]
       );
       exportData.daily_logs = confirmed.rows;
+      const foods = await query(
+        `SELECT date, meal_type, ingredient_id, name, brand, grams, calories_100g, protein_100g,
+          carbs_100g, fat_100g FROM food_journal WHERE user_id = $1 ORDER BY date, id`, [userId]
+      );
+      exportData.food_journal = foods.rows;
     }
 
     exportData.exported_at = new Date().toISOString();
-    exportData.version = "1.1";
+    exportData.version = "1.2";
 
     return NextResponse.json(exportData);
   } catch (error) {

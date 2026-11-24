@@ -131,7 +131,7 @@ export async function POST(request: Request) {
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING id`,
       [
         name, description || null, instructions || null,
-        prep_time || null, cook_time || null, servings || 1,
+        prep_time ?? null, cook_time ?? null, servings || 1,
         Math.round(totalCalories), Math.round(totalProtein * 10) / 10,
         Math.round(totalCarbs * 10) / 10, Math.round(totalFat * 10) / 10,
         image_url || null, is_public ? true : false, userId
