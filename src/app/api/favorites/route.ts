@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/lib/db";
 import { getAuthUser, UNAUTHENTICATED_RESPONSE } from "@/lib/auth";
+import { canAccessRecipe, parseRecipeId, RECIPE_NOT_FOUND } from "@/lib/recipe-access";
 
 export const dynamic = "force-dynamic";
 
@@ -19,7 +20,7 @@ export async function GET(request: NextRequest) {
        LEFT JOIN recipe_ingredients ri ON r.id = ri.recipe_id
        LEFT JOIN ingredients i ON ri.ingredient_id = i.id
        LEFT JOIN recipe_ratings rr ON r.id = rr.recipe_id
-       WHERE rf.user_id = $1
+       WHERE rf.user_id = $1 AND (r.is_public OR r.created_by = $1)
        GROUP BY r.id, rf.created_at
        ORDER BY rf.created_at DESC`,
       [userId]
@@ -37,11 +38,15 @@ export async function POST(request: Request) {
     const authUser = await getAuthUser();
     if (!authUser) return NextResponse.json(UNAUTHENTICATED_RESPONSE, { status: 401 });
     const userId = authUser.id;
-    const body = await request.json();
-    const { recipe_id } = body;
+    const body = await request.json().catch(() => null);
+    const recipe_id = parseRecipeId(body?.recipe_id);
 
     if (!recipe_id) {
       return NextResponse.json({ error: "recipe_id est requis" }, { status: 400 });
+    }
+
+    if (!(await canAccessRecipe(recipe_id, userId))) {
+      return NextResponse.json(RECIPE_NOT_FOUND, { status: 404 });
     }
 
     await query(
@@ -62,7 +67,7 @@ export async function DELETE(request: Request) {
     if (!authUser) return NextResponse.json(UNAUTHENTICATED_RESPONSE, { status: 401 });
     const userId = authUser.id;
     const { searchParams } = new URL(request.url);
-    const recipeId = searchParams.get("recipeId");
+    const recipeId = parseRecipeId(searchParams.get("recipeId"));
 
     if (!recipeId) {
       return NextResponse.json({ error: "recipeId est requis" }, { status: 400 });

@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/lib/db";
 import { getAuthUser, UNAUTHENTICATED_RESPONSE } from "@/lib/auth";
+import { canAccessRecipe, parseRecipeId, RECIPE_NOT_FOUND } from "@/lib/recipe-access";
+
+const MAX_COMMENT_LENGTH = 1000;
 
 export const dynamic = "force-dynamic";
 
@@ -9,15 +12,25 @@ export async function POST(request: Request) {
     const authUser = await getAuthUser();
     if (!authUser) return NextResponse.json(UNAUTHENTICATED_RESPONSE, { status: 401 });
     const userId = authUser.id;
-    const body = await request.json();
-    const { recipe_id, rating, comment } = body;
+    const body = await request.json().catch(() => null);
+    const recipe_id = parseRecipeId(body?.recipe_id);
+    const rating = body?.rating;
+    const comment = body?.comment;
 
-    if (!recipe_id || !rating) {
+    if (!recipe_id || rating == null) {
       return NextResponse.json({ error: "recipe_id et rating sont requis" }, { status: 400 });
     }
 
-    if (rating < 1 || rating > 5) {
-      return NextResponse.json({ error: "La note doit être entre 1 et 5" }, { status: 400 });
+    if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+      return NextResponse.json({ error: "La note doit être un entier entre 1 et 5" }, { status: 400 });
+    }
+
+    if (comment != null && (typeof comment !== "string" || comment.length > MAX_COMMENT_LENGTH)) {
+      return NextResponse.json({ error: `Le commentaire ne doit pas dépasser ${MAX_COMMENT_LENGTH} caractères` }, { status: 400 });
+    }
+
+    if (!(await canAccessRecipe(recipe_id, userId))) {
+      return NextResponse.json(RECIPE_NOT_FOUND, { status: 404 });
     }
 
     await query(
