@@ -2,52 +2,34 @@ import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
 import { hashPassword, createSession, setSessionCookie, sessionClientFrom } from "@/lib/auth";
 import { checkRateLimit, clientIp, tooManyRequests } from "@/lib/rate-limit";
-import { validateRequired, validateEmail, validatePassword } from "@/lib/validation";
-import { goalIssue, isNutritionGoal, validActivityProfile, calculateNutrition, type Gender, type ActivityLevel, type SportType } from "@/lib/nutrition";
+import { parseJsonBody, validationError } from "@/lib/api-validation";
+import { registerSchema } from "@/lib/schemas";
+import { goalIssue, validActivityProfile, calculateNutrition, type Gender, type ActivityLevel, type NutritionGoal, type SportType } from "@/lib/nutrition";
 
 export async function POST(request: Request) {
   try {
     const limit = checkRateLimit(`register:ip:${clientIp(request)}`, 5, 60 * 60 * 1000);
     if (!limit.allowed) return tooManyRequests(limit.retryAfterSeconds);
 
-    const body = await request.json().catch(() => ({}));
-    const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : body.email;
+    const parsed = await parseJsonBody(request, registerSchema);
+    if (parsed.response) return parsed.response;
     const {
-      password,
-      first_name,
-      last_name,
-      age,
-      weight,
-      height,
-      gender,
-      activity_level,
-      sport_type,
-    } = body;
+      email, password, first_name, last_name,
+      age, weight, height, gender, activity_level, sport_type,
+    } = parsed.data;
+    const goal = (parsed.data.nutrition_goal ?? "maintien") as NutritionGoal;
 
-    const goal = body.nutrition_goal === undefined ? "maintien" : body.nutrition_goal;
-    const issue = isNutritionGoal(goal) ? goalIssue(goal, Number(age), Number(weight), Number(height)) : "Objectif invalide.";
-    if (issue) return NextResponse.json({ errors: [{ field: "nutrition_goal", message: issue }] }, { status: 400 });
-
+    // Règles qui portent sur plusieurs champs à la fois
+    const issue = goalIssue(goal, Number(age), Number(weight), Number(height));
+    if (issue) return validationError([{ field: "nutrition_goal", message: issue }]);
     if ((goal !== "maintien" || activity_level) && !validActivityProfile(gender, activity_level, sport_type)) {
-      return NextResponse.json({ errors: [{ message: "Complétez le sexe et le niveau d’activité du profil." }] }, { status: 400 });
-    }
-    const errors = [
-      ...validateRequired({ email, password, first_name, last_name }, ["email", "password", "first_name", "last_name"]),
-      ...validatePassword(password),
-    ];
-
-    if (email && !validateEmail(email)) {
-      errors.push({ field: "email", message: "Email invalide" });
-    }
-
-    if (errors.length > 0) {
-      return NextResponse.json({ errors }, { status: 400 });
+      return validationError([{ field: "gender", message: "Complétez le sexe et le niveau d’activité du profil." }]);
     }
 
     // Check if email already exists
     const { rows: existing } = await query("SELECT id FROM users WHERE lower(email) = $1", [email]);
     if (existing.length > 0) {
-      return NextResponse.json({ errors: [{ field: "email", message: "Cet email est déjà utilisé" }] }, { status: 409 });
+      return validationError([{ field: "email", message: "Cet email est déjà utilisé" }], 409);
     }
 
     // Calculate nutritional goals if personal info is provided
@@ -58,9 +40,9 @@ export async function POST(request: Request) {
 
     if (age && weight && height && gender && activity_level) {
       const nutrition = calculateNutrition({
-        age: Number(age),
-        weight: Number(weight),
-        height: Number(height),
+        age,
+        weight,
+        height,
         gender: gender as Gender,
         activityLevel: activity_level as ActivityLevel,
         goal,

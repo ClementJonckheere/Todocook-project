@@ -113,6 +113,11 @@ const SPORT_PROTEIN_MULTIPLIERS: Record<SportType, number> = {
   autre: 1.2,
 };
 
+export const GENDERS = ["homme", "femme"] as const satisfies readonly Gender[];
+export const ACTIVITY_LEVEL_KEYS = Object.keys(ACTIVITY_MULTIPLIERS) as ActivityLevel[];
+export const SPORT_TYPE_KEYS = Object.keys(SPORT_ADJUSTMENTS) as SportType[];
+export const NUTRITION_GOALS = Object.keys(GOAL_LABELS) as NutritionGoal[];
+
 export function validActivityProfile(gender: unknown, activity: unknown, sport: unknown): boolean {
   return (gender === "homme" || gender === "femme") &&
     typeof activity === "string" && Object.prototype.hasOwnProperty.call(ACTIVITY_MULTIPLIERS, activity) &&

@@ -3,14 +3,16 @@ import { PoolClient } from "pg";
 import { gramsPerUnit } from "@/lib/recipe-portions";
 import { getPool, query } from "@/lib/db";
 import { getAuthUser, UNAUTHENTICATED_RESPONSE } from "@/lib/auth";
-import { validateRequired, validateMaxLength } from "@/lib/validation";
+import { parseJsonBody, validationError } from "@/lib/api-validation";
+import { recipeCreateSchema } from "@/lib/schemas";
+import { escapeLike } from "@/lib/sql";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const search = searchParams.get("search");
+    const search = searchParams.get("search")?.trim().slice(0, 100);
     const authUser = await getAuthUser(request);
     if (!authUser) return NextResponse.json(UNAUTHENTICATED_RESPONSE, { status: 401 });
     const userId = authUser.id;
@@ -31,7 +33,7 @@ export async function GET(request: NextRequest) {
            AND (r.name ILIKE $2 OR i.name ILIKE $2)
          GROUP BY r.id
          ORDER BY r.name`,
-        [userId, `%${search}%`]
+        [userId, `%${escapeLike(search)}%`]
       );
     } else if (onlyUser === "true") {
       result = await query(
@@ -79,41 +81,20 @@ export async function POST(request: Request) {
     const authUser = await getAuthUser(request);
     if (!authUser) return NextResponse.json(UNAUTHENTICATED_RESPONSE, { status: 401 });
     const userId = authUser.id;
-    const body = await request.json();
+    const parsed = await parseJsonBody(request, recipeCreateSchema);
+    if (parsed.response) return parsed.response;
     const {
       name, description, instructions, prep_time, cook_time,
-      servings, image_url, is_public, ingredients
-    } = body;
+      servings, image_url, is_public, ingredients,
+    } = parsed.data;
 
-    // Validation
-    const errors = [
-      ...validateRequired({ name }, ["name"]),
-      ...validateMaxLength(name, "name", 200),
-      ...validateMaxLength(description, "description", 2000),
-      ...validateMaxLength(instructions, "instructions", 5000),
-    ];
-
-    if (errors.length > 0) {
-      return NextResponse.json({ errors }, { status: 400 });
-    }
-
-    if ((servings != null && (!Number.isSafeInteger(servings) || servings < 1)) ||
-        (ingredients != null && !Array.isArray(ingredients))) {
-      return NextResponse.json({ error: "Nombre de portions ou ingrédients invalides." }, { status: 400 });
-    }
-    const seen = new Set<number>();
     let totalCalories = 0, totalProtein = 0, totalCarbs = 0, totalFat = 0;
-    if (ingredients && ingredients.length > 0) {
+    if (ingredients.length > 0) {
       for (const ing of ingredients) {
-        if (!ing || !Number.isSafeInteger(ing.ingredient_id) || seen.has(ing.ingredient_id) ||
-            !Number.isFinite(ing.quantity) || ing.quantity <= 0) {
-          return NextResponse.json({ error: "Chaque ingrédient doit avoir une quantité positive et apparaître une seule fois." }, { status: 400 });
-        }
-        seen.add(ing.ingredient_id);
         const { rows } = await query("SELECT * FROM ingredients WHERE id = $1", [ing.ingredient_id]);
         const ingredient = rows[0];
         const grams = ingredient && gramsPerUnit(ingredient, ing.unit || "g");
-        if (!grams) return NextResponse.json({ error: "Ingrédient ou conversion inconnue. Indique le poids en grammes." }, { status: 400 });
+        if (!grams) return validationError([{ field: "ingredients", message: "Ingrédient ou conversion inconnue. Indique le poids en grammes." }]);
         const factor = ing.quantity * grams / 100;
         totalCalories += ingredient.calories * factor;
         totalProtein += ingredient.protein * factor;
@@ -128,16 +109,16 @@ export async function POST(request: Request) {
       `INSERT INTO recipes (name, description, instructions, prep_time, cook_time, servings, calories, protein, carbs, fat, image_url, is_public, created_by)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING id`,
       [
-        name, description || null, instructions || null,
-        prep_time ?? null, cook_time ?? null, servings || 1,
+        name, description ?? null, instructions ?? null,
+        prep_time ?? null, cook_time ?? null, servings ?? 1,
         Math.round(totalCalories), Math.round(totalProtein * 10) / 10,
         Math.round(totalCarbs * 10) / 10, Math.round(totalFat * 10) / 10,
-        image_url || null, is_public ? true : false, userId
+        image_url ?? null, is_public === true, userId
       ]
     );
     const recipeId = recipeRows[0].id;
 
-    if (ingredients && ingredients.length > 0) {
+    if (ingredients.length > 0) {
       for (const ing of ingredients) {
         await client.query(
           `INSERT INTO recipe_ingredients (recipe_id, ingredient_id, quantity, unit) VALUES ($1, $2, $3, $4)`,

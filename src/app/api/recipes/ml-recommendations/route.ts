@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/lib/db";
 import { getAuthUser, UNAUTHENTICATED_RESPONSE } from "@/lib/auth";
+import { parseJsonBody } from "@/lib/api-validation";
+import { similarRecipesSchema } from "@/lib/schemas";
 import {
   getRecommenderInstance,
   shouldRefreshRecommender,
@@ -278,15 +280,10 @@ export async function POST(request: NextRequest) {
     }
     const userId = authUser.id;
 
-    const body = await request.json();
-    const { recipeId, limit = 5 } = body;
-
-    if (!recipeId) {
-      return NextResponse.json(
-        { error: "recipeId est requis" },
-        { status: 400 }
-      );
-    }
+    const parsed = await parseJsonBody(request, similarRecipesSchema);
+    if (parsed.response) return parsed.response;
+    const { recipeId } = parsed.data;
+    const limit = parsed.data.limit ?? 5;
 
     const recommender = getRecommenderInstance();
 

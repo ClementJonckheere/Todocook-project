@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/lib/db";
 import { getAuthUser, UNAUTHENTICATED_RESPONSE } from "@/lib/auth";
+import { parseJsonBody, parseWith } from "@/lib/api-validation";
+import { listItemParamsSchema, shoppingItemUpdateSchema } from "@/lib/schemas";
 
 export const dynamic = "force-dynamic";
 
@@ -13,13 +15,12 @@ export async function PUT(
     const authUser = await getAuthUser(request);
     if (!authUser) return NextResponse.json(UNAUTHENTICATED_RESPONSE, { status: 401 });
     const userId = authUser.id;
-    const { id, itemId } = await params;
-    const body = await request.json();
-    const { checked } = body;
-
-    if (typeof checked !== "boolean") {
-      return NextResponse.json({ error: "checked doit être un booléen" }, { status: 400 });
-    }
+    const routeParams = parseWith(listItemParamsSchema, await params);
+    if (routeParams.response) return routeParams.response;
+    const { id, itemId } = routeParams.data;
+    const parsed = await parseJsonBody(request, shoppingItemUpdateSchema);
+    if (parsed.response) return parsed.response;
+    const { checked } = parsed.data;
 
     // Verify list ownership
     const { rows: lists } = await query(
@@ -59,7 +60,9 @@ export async function DELETE(
     const authUser = await getAuthUser(request);
     if (!authUser) return NextResponse.json(UNAUTHENTICATED_RESPONSE, { status: 401 });
     const userId = authUser.id;
-    const { id, itemId } = await params;
+    const routeParams = parseWith(listItemParamsSchema, await params);
+    if (routeParams.response) return routeParams.response;
+    const { id, itemId } = routeParams.data;
 
     // Verify list ownership
     const { rows: lists } = await query(

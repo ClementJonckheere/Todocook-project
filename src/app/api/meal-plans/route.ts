@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/lib/db";
 import { getAuthUser, UNAUTHENTICATED_RESPONSE } from "@/lib/auth";
+import { parseJsonBody, parseQuery } from "@/lib/api-validation";
+import { dateRangeQuerySchema, idQuerySchema, mealPlanConsumeSchema, mealPlanCreateSchema } from "@/lib/schemas";
 
 export const dynamic = "force-dynamic";
 
@@ -12,12 +14,12 @@ const mealFields = `mp.*, r.name AS recipe_name, COALESCE((mp.nutrition_per_port
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
     const authUser = await getAuthUser(request);
     if (!authUser) return NextResponse.json(UNAUTHENTICATED_RESPONSE, { status: 401 });
     const userId = authUser.id;
-    const startDate = searchParams.get("startDate");
-    const endDate = searchParams.get("endDate");
+    const parsed = parseQuery(request, dateRangeQuerySchema);
+    if (parsed.response) return parsed.response;
+    const { startDate, endDate } = parsed.data;
 
     let result;
     if (startDate && endDate) {
@@ -53,20 +55,14 @@ export async function POST(request: Request) {
     const authUser = await getAuthUser(request);
     if (!authUser) return NextResponse.json(UNAUTHENTICATED_RESPONSE, { status: 401 });
     const userId = authUser.id;
-    const body = await request.json();
-    const { recipe_id, date, meal_type, planned_portions = 1 } = body;
-    if (!Number.isFinite(planned_portions) || planned_portions <= 0 || planned_portions > 100) {
-      return NextResponse.json({ error: "Portion prévue invalide" }, { status: 400 });
-    }
-
-    if (!recipe_id || !date) {
-      return NextResponse.json({ error: "recipe_id et date sont requis" }, { status: 400 });
-    }
+    const parsed = await parseJsonBody(request, mealPlanCreateSchema);
+    if (parsed.response) return parsed.response;
+    const { recipe_id, date, meal_type, planned_portions } = parsed.data;
 
     const { rows: planRows } = await query(
       `INSERT INTO meal_plans (user_id, recipe_id, date, meal_type, planned_portions)
        SELECT $1::integer, id, $3, $4, $5 FROM recipes WHERE id = $2 AND (is_public OR created_by = $1) RETURNING id`,
-      [userId, recipe_id, date, meal_type || "dejeuner", planned_portions]
+      [userId, recipe_id, date, meal_type, planned_portions]
     );
     if (!planRows.length) return NextResponse.json({ error: "Recette introuvable" }, { status: 404 });
     const planId = planRows[0].id;
@@ -90,10 +86,9 @@ export async function PATCH(request: Request) {
   try {
     const user = await getAuthUser(request);
     if (!user) return NextResponse.json(UNAUTHENTICATED_RESPONSE, { status: 401 });
-    const { id, portions } = await request.json();
-    if (!Number.isSafeInteger(id) || !Number.isFinite(portions) || portions < 0 || portions > 100) {
-      return NextResponse.json({ error: "Portion invalide" }, { status: 400 });
-    }
+    const parsed = await parseJsonBody(request, mealPlanConsumeSchema);
+    if (parsed.response) return parsed.response;
+    const { id, portions } = parsed.data;
     const result = await query(
       `UPDATE meal_plans mp SET consumed_portions = $3,
         nutrition_per_portion = CASE WHEN $3::float8 = 0 THEN NULL ELSE
@@ -118,12 +113,9 @@ export async function DELETE(request: Request) {
     const authUser = await getAuthUser(request);
     if (!authUser) return NextResponse.json(UNAUTHENTICATED_RESPONSE, { status: 401 });
 
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get("id");
-
-    if (!id) {
-      return NextResponse.json({ error: "id est requis" }, { status: 400 });
-    }
+    const parsed = parseQuery(request, idQuerySchema);
+    if (parsed.response) return parsed.response;
+    const { id } = parsed.data;
 
     const result = await query("DELETE FROM meal_plans WHERE id = $1 AND user_id = $2 AND consumed_portions = 0", [id, authUser.id]);
     if (result.rowCount === 0) {

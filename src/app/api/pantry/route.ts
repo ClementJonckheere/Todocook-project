@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/lib/db";
 import { getAuthUser, UNAUTHENTICATED_RESPONSE } from "@/lib/auth";
+import { parseJsonBody, parseQuery } from "@/lib/api-validation";
+import { idQuerySchema, pantryAddSchema } from "@/lib/schemas";
 
 export const dynamic = "force-dynamic";
 
@@ -31,11 +33,13 @@ export async function POST(request: Request) {
     const authUser = await getAuthUser(request);
     if (!authUser) return NextResponse.json(UNAUTHENTICATED_RESPONSE, { status: 401 });
     const userId = authUser.id;
-    const body = await request.json();
-    const { ingredient_id, quantity, unit } = body;
+    const parsed = await parseJsonBody(request, pantryAddSchema);
+    if (parsed.response) return parsed.response;
+    const { ingredient_id, quantity, unit } = parsed.data;
 
-    if (!ingredient_id) {
-      return NextResponse.json({ error: "ingredient_id est requis" }, { status: 400 });
+    const { rowCount: ingredientExists } = await query("SELECT 1 FROM ingredients WHERE id = $1", [ingredient_id]);
+    if (!ingredientExists) {
+      return NextResponse.json({ error: "Ingrédient introuvable" }, { status: 404 });
     }
 
     const { rows: existing } = await query(
@@ -46,12 +50,12 @@ export async function POST(request: Request) {
     if (existing.length > 0) {
       await query(
         "UPDATE pantry_items SET quantity = quantity + $1, unit = COALESCE($2, unit) WHERE id = $3",
-        [quantity || 1, unit, existing[0].id]
+        [quantity ?? 1, unit ?? null, existing[0].id]
       );
     } else {
       await query(
         "INSERT INTO pantry_items (user_id, ingredient_id, quantity, unit) VALUES ($1, $2, $3, $4)",
-        [userId, ingredient_id, quantity || 1, unit || "g"]
+        [userId, ingredient_id, quantity ?? 1, unit ?? "g"]
       );
     }
 
@@ -67,12 +71,9 @@ export async function DELETE(request: Request) {
     const authUser = await getAuthUser(request);
     if (!authUser) return NextResponse.json(UNAUTHENTICATED_RESPONSE, { status: 401 });
 
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get("id");
-
-    if (!id) {
-      return NextResponse.json({ error: "id est requis" }, { status: 400 });
-    }
+    const parsed = parseQuery(request, idQuerySchema);
+    if (parsed.response) return parsed.response;
+    const { id } = parsed.data;
 
     const result = await query("DELETE FROM pantry_items WHERE id = $1 AND user_id = $2", [id, authUser.id]);
     if (result.rowCount === 0) {

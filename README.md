@@ -79,6 +79,20 @@ Toutes les colonnes `date` sont de type `DATE`.
 - Connexion limitée à 10 tentatives / 15 min (par IP et par email), inscription à 5 / heure par IP.
   Ce compteur est en mémoire : avec plusieurs instances, il faudra le déplacer dans Redis ou Postgres.
 
+## Validation des requêtes
+
+Chaque route API valide son corps, ses paramètres d'URL et sa query string avec [zod](https://zod.dev),
+via `parseJsonBody`, `parseQuery` et `parseWith` (`src/lib/api-validation.ts`). Les schémas sont
+regroupés dans `src/lib/schemas.ts`. En cas d'erreur, la réponse est un `400` (ou `413` si le corps
+dépasse la taille autorisée) au format `{ "error": "premier message", "errors": [{ "field", "message" }] }`.
+
+## Export et import
+
+`GET /api/export` produit un fichier JSON de toutes les données de l'utilisateur ; `POST /api/import`
+n'en réimporte que les recettes (2 Mo et 200 recettes maximum, en une seule transaction). Les recettes
+dont l'utilisateur possède déjà une recette du même nom sont ignorées, et les ingrédients sont rattachés
+au catalogue par nom exact ; ceux qui n'y figurent pas sont listés dans la réponse.
+
 ## Structure
 
 ```
