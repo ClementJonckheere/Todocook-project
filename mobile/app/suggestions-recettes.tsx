@@ -14,6 +14,7 @@ import { format } from "date-fns";
 import { apiUrl, apiRequest } from "../src/lib/api";
 import { formatNumber, parseDecimal, validPortions } from "../src/lib/food-journal";
 import { PortionStepper } from "../src/components/PortionStepper";
+import { DinnerExclusions } from "../src/components/DinnerExclusions";
 import { colors } from "../src/theme/colors";
 
 interface SuggestedRecipe {
@@ -199,6 +200,8 @@ export default function SuggestionsRecettesScreen() {
           </View>
         </View>
 
+        <DinnerExclusions onChange={() => { setOffset(0); setRetry((r) => r + 1); }} />
+
         {error ? (
           <View style={s.errorBox}>
             <Text style={s.errorText}>{error}</Text>
@@ -218,7 +221,7 @@ export default function SuggestionsRecettesScreen() {
           <View style={s.emptyCard}>
             <Ionicons name="restaurant-outline" size={40} color={colors.gray[300]} />
             <Text style={s.emptyTitle}>Aucune recette trouvée</Text>
-            <Text style={s.emptyHint}>Essayez un délai plus long ou autorisez davantage d'aliments manquants</Text>
+            <Text style={s.emptyHint}>Essayez un délai plus long, autorisez davantage d'aliments manquants ou retirez des ingrédients à éviter</Text>
           </View>
         ) : (
           <>
