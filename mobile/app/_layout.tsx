@@ -46,6 +46,7 @@ export default function RootLayout() {
             animation: "slide_from_bottom",
           }}
         />
+        <Stack.Screen name="journal-alimentaire" options={{ animation: "slide_from_right" }} />
         <Stack.Screen
           name="suggestions-recettes"
           options={{
