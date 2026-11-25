@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PoolClient } from "pg";
-import { gramsPerUnit } from "@/lib/recipe-portions";
+import { computeRecipeNutrition } from "@/lib/recipe-nutrition";
 import { getPool, query } from "@/lib/db";
 import { getAuthUser, UNAUTHENTICATED_RESPONSE } from "@/lib/auth";
 import { parseJsonBody, validationError } from "@/lib/api-validation";
@@ -88,19 +88,16 @@ export async function POST(request: Request) {
       servings, image_url, is_public, ingredients,
     } = parsed.data;
 
-    let totalCalories = 0, totalProtein = 0, totalCarbs = 0, totalFat = 0;
-    if (ingredients.length > 0) {
-      for (const ing of ingredients) {
-        const { rows } = await query("SELECT * FROM ingredients WHERE id = $1", [ing.ingredient_id]);
-        const ingredient = rows[0];
-        const grams = ingredient && gramsPerUnit(ingredient, ing.unit || "g");
-        if (!grams) return validationError([{ field: "ingredients", message: "Ingrédient ou conversion inconnue. Indique le poids en grammes." }]);
-        const factor = ing.quantity * grams / 100;
-        totalCalories += ingredient.calories * factor;
-        totalProtein += ingredient.protein * factor;
-        totalCarbs += ingredient.carbs * factor;
-        totalFat += ingredient.fat * factor;
-      }
+    // Même calcul que pour le catalogue (src/lib/recipe-nutrition.ts)
+    const lines = [];
+    for (const ing of ingredients) {
+      const { rows } = await query("SELECT * FROM ingredients WHERE id = $1", [ing.ingredient_id]);
+      if (!rows[0]) return validationError([{ field: "ingredients", message: "Ingrédient introuvable." }], 404);
+      lines.push({ ingredient: rows[0], quantity: ing.quantity, unit: ing.unit || "g" });
+    }
+    const nutrition = computeRecipeNutrition(lines);
+    if (!nutrition) {
+      return validationError([{ field: "ingredients", message: "Ingrédient ou conversion inconnue. Indique le poids en grammes." }]);
     }
 
     client = await (await getPool()).connect();
@@ -111,8 +108,7 @@ export async function POST(request: Request) {
       [
         name, description ?? null, instructions ?? null,
         prep_time ?? null, cook_time ?? null, servings ?? 1,
-        Math.round(totalCalories), Math.round(totalProtein * 10) / 10,
-        Math.round(totalCarbs * 10) / 10, Math.round(totalFat * 10) / 10,
+        nutrition.calories, nutrition.protein, nutrition.carbs, nutrition.fat,
         image_url ?? null, is_public === true, userId
       ]
     );
