@@ -92,7 +92,7 @@ export async function POST(request: Request) {
     const user = rows[0];
     const client = sessionClientFrom(request);
     const token = await createSession(user.id, client);
-    if (client === "web") setSessionCookie(token);
+    if (client === "web") await setSessionCookie(token);
 
     return NextResponse.json(client === "mobile" ? { ...user, token } : user, { status: 201 });
   } catch (error) {

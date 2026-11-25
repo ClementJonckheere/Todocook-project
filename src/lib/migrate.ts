@@ -2,7 +2,8 @@ import fs from "fs";
 import path from "path";
 import type { Pool } from "pg";
 
-export const MIGRATIONS_DIR = path.join(process.cwd(), "migrations");
+// Dossier lu à l'exécution : l'indication évite que Turbopack analyse tout le projet au build.
+export const MIGRATIONS_DIR = path.join(/* turbopackIgnore: true */ process.cwd(), "migrations");
 
 // Identifiant arbitraire du verrou consultatif : empêche deux instances de migrer en même temps.
 const MIGRATION_LOCK_ID = 74_210_001;

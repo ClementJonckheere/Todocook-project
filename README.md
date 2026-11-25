@@ -4,7 +4,7 @@ Assistant cuisine et nutrition : garde-manger, scanner de codes-barres (Open Foo
 suggestions de recettes, planning des repas avec portions, journal alimentaire,
 objectifs nutritionnels personnalisés et listes de courses.
 
-- **Web / PWA** : Next.js 14 (App Router) + routes API dans `src/app/api`
+- **Web / PWA** : Next.js 16 (App Router, React 19) + routes API dans `src/app/api` ; Node.js 20.9 minimum
 - **Base de données** : PostgreSQL 16 (driver `pg`, SQL écrit à la main, sans ORM)
 - **Mobile** : Expo SDK 54 / React Native dans `mobile/`, qui consomme la même API
 
@@ -42,7 +42,7 @@ La connexion se fait avec un compte existant ; l'inscription passe par le site w
 | Commande | Rôle |
 | --- | --- |
 | `npm run dev` / `build` / `start` | Next.js |
-| `npm run lint` | ESLint (`next/core-web-vitals`) |
+| `npm run lint` | ESLint 10 (`eslint-config-next/core-web-vitals`, configuration dans `eslint.config.mjs`) |
 | `npm run typecheck` | Vérification TypeScript |
 | `npm test` | Tests Jest ; ceux des migrations ne tournent que si `TEST_DATABASE_URL` est défini (**cette base est entièrement vidée**) |
 | `npm run db:migrate` | Applique les migrations en attente |
