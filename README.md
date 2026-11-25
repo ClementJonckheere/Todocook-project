@@ -53,7 +53,8 @@ La connexion se fait avec un compte existant ; l'inscription passe par le site w
 Le schéma est versionné dans `migrations/NNN_description.sql`. Chaque fichier est appliqué
 une seule fois, dans une transaction, et enregistré dans la table `schema_migrations`.
 Par défaut, les migrations en attente s'appliquent aussi au premier accès à la base
-(`DB_AUTO_MIGRATE=false` pour désactiver ce comportement en production).
+(`DB_AUTO_MIGRATE=false` pour désactiver ce comportement en production). `npm run db:migrate` et
+`npm run db:seed` appliquent toujours les migrations, quel que soit ce réglage.
 
 **Ajouter une migration** : créer `migrations/004_ma_modification.sql` (numéro suivant) et ne
 jamais modifier une migration déjà appliquée.
@@ -89,9 +90,17 @@ dépasse la taille autorisée) au format `{ "error": "premier message", "errors"
 ## Export et import
 
 `GET /api/export` produit un fichier JSON de toutes les données de l'utilisateur ; `POST /api/import`
-n'en réimporte que les recettes (2 Mo et 200 recettes maximum, en une seule transaction). Les recettes
-dont l'utilisateur possède déjà une recette du même nom sont ignorées, et les ingrédients sont rattachés
-au catalogue par nom exact ; ceux qui n'y figurent pas sont listés dans la réponse.
+n'en réimporte que les recettes (2 Mo et 200 recettes maximum, en une seule transaction). Les ingrédients
+sont rattachés au catalogue par nom exact ; ceux qui n'y figurent pas sont listés dans la réponse. Une
+recette déjà possédée sous le même nom n'est pas recréée : réimporter le fichier après avoir ajouté les
+ingrédients manquants au catalogue la complète (si tous ses ingrédients actuels figurent dans le fichier).
+
+## Valeurs nutritionnelles des recettes
+
+Les calories et macros d'une recette sont celles de la recette entière, calculées à partir de ses
+ingrédients (`computeRecipeNutrition`, `src/lib/recipe-nutrition.ts`) : création de recette, données de
+référence (`db:seed`) et migration 006 utilisent le même calcul. L'application divise par le nombre de
+portions pour l'affichage, le planning et le journal.
 
 ## Structure
 
