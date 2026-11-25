@@ -35,8 +35,8 @@ export async function createSession(userId: number, client: SessionClient = "web
   return token;
 }
 
-export function setSessionCookie(token: string) {
-  cookies().set(SESSION_COOKIE, token, {
+export async function setSessionCookie(token: string) {
+  (await cookies()).set(SESSION_COOKIE, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
@@ -45,12 +45,13 @@ export function setSessionCookie(token: string) {
   });
 }
 
-export function clearSessionCookie() {
-  cookies().delete(SESSION_COOKIE);
+export async function clearSessionCookie() {
+  (await cookies()).delete(SESSION_COOKIE);
 }
 
-function currentToken(): string | null {
-  return readSessionToken(headers().get("authorization"), cookies().get(SESSION_COOKIE)?.value);
+async function currentToken(): Promise<string | null> {
+  const [headerStore, cookieStore] = await Promise.all([headers(), cookies()]);
+  return readSessionToken(headerStore.get("authorization"), cookieStore.get(SESSION_COOKIE)?.value);
 }
 
 /**
@@ -58,7 +59,7 @@ function currentToken(): string | null {
  * Le paramètre `request` est conservé pour compatibilité : la lecture passe par next/headers.
  */
 export async function getAuthUser(_request?: Request): Promise<AuthUser | null> {
-  const token = currentToken();
+  const token = await currentToken();
   if (!token) return null;
   const { rows } = await query<AuthUser>(
     `SELECT u.id, u.email, u.first_name, u.last_name
@@ -71,7 +72,7 @@ export async function getAuthUser(_request?: Request): Promise<AuthUser | null> 
 
 /** Révoque la session courante (déconnexion de cet appareil uniquement). */
 export async function revokeCurrentSession(): Promise<void> {
-  const token = currentToken();
+  const token = await currentToken();
   if (token) await query("DELETE FROM sessions WHERE token_hash = $1", [hashToken(token)]);
 }
 

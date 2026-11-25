@@ -7,13 +7,13 @@ export const dynamic = "force-dynamic";
 // PUT toggle checked status of an item
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string; itemId: string } }
+  { params }: { params: Promise<{ id: string; itemId: string }> }
 ) {
   try {
     const authUser = await getAuthUser(request);
     if (!authUser) return NextResponse.json(UNAUTHENTICATED_RESPONSE, { status: 401 });
     const userId = authUser.id;
-    const { id, itemId } = params;
+    const { id, itemId } = await params;
     const body = await request.json();
     const { checked } = body;
 
@@ -53,13 +53,13 @@ export async function PUT(
 // DELETE an item from a shopping list
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string; itemId: string } }
+  { params }: { params: Promise<{ id: string; itemId: string }> }
 ) {
   try {
     const authUser = await getAuthUser(request);
     if (!authUser) return NextResponse.json(UNAUTHENTICATED_RESPONSE, { status: 401 });
     const userId = authUser.id;
-    const { id, itemId } = params;
+    const { id, itemId } = await params;
 
     // Verify list ownership
     const { rows: lists } = await query(

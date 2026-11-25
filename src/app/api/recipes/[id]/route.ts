@@ -5,12 +5,12 @@ import { parseRecipeId, RECIPE_NOT_FOUND } from "@/lib/recipe-access";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(_: Request, { params }: { params: { id: string } }) {
+export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const authUser = await getAuthUser();
     if (!authUser) return NextResponse.json(UNAUTHENTICATED_RESPONSE, { status: 401 });
     const userId = authUser.id;
-    const recipeId = parseRecipeId(params.id);
+    const recipeId = parseRecipeId((await params).id);
     if (!recipeId) return NextResponse.json(RECIPE_NOT_FOUND, { status: 404 });
 
     // Recette publique ou créée par l'utilisateur ; les recettes privées des autres restent introuvables
@@ -62,11 +62,11 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
   }
 }
 
-export async function DELETE(_: Request, { params }: { params: { id: string } }) {
+export async function DELETE(_: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const authUser = await getAuthUser();
     if (!authUser) return NextResponse.json(UNAUTHENTICATED_RESPONSE, { status: 401 });
-    const recipeId = parseRecipeId(params.id);
+    const recipeId = parseRecipeId((await params).id);
     if (!recipeId) return NextResponse.json(RECIPE_NOT_FOUND, { status: 404 });
 
     const planned = await query(

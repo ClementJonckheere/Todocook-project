@@ -44,7 +44,7 @@ export async function POST(request: Request) {
 
     const client = sessionClientFrom(request);
     const token = await createSession(user.id, client);
-    if (client === "web") setSessionCookie(token);
+    if (client === "web") await setSessionCookie(token);
 
     return NextResponse.json({
       id: user.id,

@@ -8,9 +8,8 @@ const nextConfig = {
       },
     ],
   },
-  experimental: {
-    serverComponentsExternalPackages: ['pg'],
-  },
+  // Le driver Postgres reste un module Node chargé tel quel (non empaqueté)
+  serverExternalPackages: ['pg'],
 };
 
 module.exports = nextConfig;

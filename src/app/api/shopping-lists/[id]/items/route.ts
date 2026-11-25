@@ -7,13 +7,13 @@ export const dynamic = "force-dynamic";
 // POST add an item to a shopping list
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const authUser = await getAuthUser(request);
     if (!authUser) return NextResponse.json(UNAUTHENTICATED_RESPONSE, { status: 401 });
     const userId = authUser.id;
-    const { id } = params;
+    const { id } = await params;
     const body = await request.json();
     const { name } = body;
 

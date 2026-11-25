@@ -7,13 +7,13 @@ export const dynamic = "force-dynamic";
 // GET a single shopping list with items
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const authUser = await getAuthUser(request);
     if (!authUser) return NextResponse.json(UNAUTHENTICATED_RESPONSE, { status: 401 });
     const userId = authUser.id;
-    const { id } = params;
+    const { id } = await params;
 
     const { rows: lists } = await query(
       `SELECT * FROM shopping_lists WHERE id = $1 AND user_id = $2`,
@@ -39,13 +39,13 @@ export async function GET(
 // PUT update a shopping list (title or touch updated_at)
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const authUser = await getAuthUser(request);
     if (!authUser) return NextResponse.json(UNAUTHENTICATED_RESPONSE, { status: 401 });
     const userId = authUser.id;
-    const { id } = params;
+    const { id } = await params;
     const body = await request.json();
     const { title } = body;
 
@@ -84,13 +84,13 @@ export async function PUT(
 // DELETE a shopping list
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const authUser = await getAuthUser(request);
     if (!authUser) return NextResponse.json(UNAUTHENTICATED_RESPONSE, { status: 401 });
     const userId = authUser.id;
-    const { id } = params;
+    const { id } = await params;
     const result = await query(`DELETE FROM shopping_lists WHERE id = $1 AND user_id = $2`, [id, userId]);
     if (result.rowCount === 0) {
       return NextResponse.json({ error: "Liste non trouvée" }, { status: 404 });

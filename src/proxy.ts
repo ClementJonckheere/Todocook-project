@@ -19,7 +19,7 @@ function matches(pathname: string, paths: string[]) {
   return paths.some((path) => pathname === path || pathname.startsWith(`${path}/`));
 }
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const hasSession =
     Boolean(request.cookies.get(SESSION_COOKIE)?.value) ||
