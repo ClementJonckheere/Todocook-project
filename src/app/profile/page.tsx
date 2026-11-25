@@ -145,17 +145,35 @@ export default function ProfilePage() {
     setImporting(true);
     try {
       const text = await file.text();
-      const data = JSON.parse(text);
-      await fetch(apiUrl("/api/import"), {
+      let data: unknown;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        alert("Ce fichier n'est pas un export TodoCook valide (JSON illisible).");
+        return;
+      }
+      const res = await fetch(apiUrl("/api/import"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
-      alert("Import terminé !");
+      const result = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        alert(result.error || "Erreur lors de l'import");
+        return;
+      }
+      const lines = [`Import terminé : ${result.imported} recette(s) importée(s).`];
+      if (result.skipped) lines.push(`${result.skipped} recette(s) déjà présente(s), ignorée(s).`);
+      if (result.unmatched_ingredients?.length) {
+        lines.push(`Ingrédients absents du catalogue (non rattachés) : ${result.unmatched_ingredients.join(", ")}.`);
+      }
+      alert(lines.join("\n"));
     } catch {
       alert("Erreur lors de l'import");
+    } finally {
+      setImporting(false);
+      e.target.value = "";
     }
-    setImporting(false);
   };
 
   const handleLogout = async () => {
