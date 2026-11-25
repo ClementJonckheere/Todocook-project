@@ -36,6 +36,7 @@ export async function seedReferenceData(): Promise<boolean> {
     { name: "Lardons", calories: 260, protein: 15, carbs: 0.5, fat: 22, fiber: 0, unit: "g", category: "Viande" },
     { name: "Thon en boîte", calories: 132, protein: 29, carbs: 0, fat: 1.2, fiber: 0, unit: "g", category: "Poisson" },
     { name: "Pain", calories: 265, protein: 9, carbs: 49, fat: 3.2, fiber: 2.7, unit: "g", category: "Boulangerie" },
+    { name: "Avocat", calories: 160, protein: 2, carbs: 8.5, fat: 14.7, fiber: 6.7, unit: "g", category: "Fruits" },
   ];
 
   for (const ing of ingredients) {
@@ -323,6 +324,7 @@ export async function seedReferenceData(): Promise<boolean> {
       prepTime: 5, cookTime: 5, servings: 1, calories: 350, protein: 14, carbs: 28, fat: 22,
       ingredients: [
         { name: "Pain", quantity: 60, unit: "g" },
+        { name: "Avocat", quantity: 70, unit: "g" },
         { name: "Oeuf", quantity: 1, unit: "pièce" },
         { name: "Huile d'olive", quantity: 5, unit: "ml" },
         { name: "Sel", quantity: 1, unit: "g" },
