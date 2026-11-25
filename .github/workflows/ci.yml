@@ -33,6 +33,18 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run db:migrate
+      # Déploiement type : serveur sans migration automatique, migrations lancées à part sur une base vierge
+      - name: Migrations explicites sur une base vierge (DB_AUTO_MIGRATE=false)
+        env:
+          PGPASSWORD: todocook
+          DB_AUTO_MIGRATE: "false"
+          DATABASE_URL: postgresql://todocook:todocook@localhost:5432/todocook_deploy
+        run: |
+          psql -h localhost -U todocook -d todocook -c "CREATE DATABASE todocook_deploy"
+          npm run db:migrate
+          tables=$(psql -h localhost -U todocook -d todocook_deploy -Atc "SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_name IN ('users', 'recipes', 'sessions', 'food_journal', 'schema_migrations')")
+          test "$tables" = "5" || { echo "Tables manquantes après db:migrate ($tables/5)"; exit 1; }
+          npm run db:seed
       - run: npm run build
 
   mobile:

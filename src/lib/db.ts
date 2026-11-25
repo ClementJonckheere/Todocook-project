@@ -39,6 +39,16 @@ function ensureReady(): Promise<void> {
   return ready;
 }
 
+/**
+ * Applique explicitement les migrations en attente, quel que soit DB_AUTO_MIGRATE.
+ * Utilisé par `npm run db:migrate` / `db:seed` (le réglage ne concerne que le serveur).
+ */
+export async function runPendingMigrations(): Promise<string[]> {
+  const applied = await migrate(pool);
+  ready = Promise.resolve();
+  return applied;
+}
+
 export async function getPool() {
   await ensureReady();
   return pool;
