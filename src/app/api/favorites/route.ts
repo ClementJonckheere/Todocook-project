@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/lib/db";
 import { getAuthUser, UNAUTHENTICATED_RESPONSE } from "@/lib/auth";
-import { canAccessRecipe, parseRecipeId, RECIPE_NOT_FOUND } from "@/lib/recipe-access";
+import { canAccessRecipe, RECIPE_NOT_FOUND } from "@/lib/recipe-access";
+import { parseJsonBody, parseQuery } from "@/lib/api-validation";
+import { favoriteDeleteQuerySchema, favoriteSchema } from "@/lib/schemas";
 
 export const dynamic = "force-dynamic";
 
@@ -38,12 +40,9 @@ export async function POST(request: Request) {
     const authUser = await getAuthUser();
     if (!authUser) return NextResponse.json(UNAUTHENTICATED_RESPONSE, { status: 401 });
     const userId = authUser.id;
-    const body = await request.json().catch(() => null);
-    const recipe_id = parseRecipeId(body?.recipe_id);
-
-    if (!recipe_id) {
-      return NextResponse.json({ error: "recipe_id est requis" }, { status: 400 });
-    }
+    const parsed = await parseJsonBody(request, favoriteSchema);
+    if (parsed.response) return parsed.response;
+    const { recipe_id } = parsed.data;
 
     if (!(await canAccessRecipe(recipe_id, userId))) {
       return NextResponse.json(RECIPE_NOT_FOUND, { status: 404 });
@@ -66,12 +65,9 @@ export async function DELETE(request: Request) {
     const authUser = await getAuthUser();
     if (!authUser) return NextResponse.json(UNAUTHENTICATED_RESPONSE, { status: 401 });
     const userId = authUser.id;
-    const { searchParams } = new URL(request.url);
-    const recipeId = parseRecipeId(searchParams.get("recipeId"));
-
-    if (!recipeId) {
-      return NextResponse.json({ error: "recipeId est requis" }, { status: 400 });
-    }
+    const parsed = parseQuery(request, favoriteDeleteQuerySchema);
+    if (parsed.response) return parsed.response;
+    const { recipeId } = parsed.data;
 
     await query(
       `DELETE FROM recipe_favorites WHERE user_id = $1 AND recipe_id = $2`,

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/lib/db";
 import { getAuthUser, UNAUTHENTICATED_RESPONSE } from "@/lib/auth";
+import { parseJsonBody, parseWith } from "@/lib/api-validation";
+import { listParamsSchema, shoppingListUpdateSchema } from "@/lib/schemas";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +15,9 @@ export async function GET(
     const authUser = await getAuthUser(request);
     if (!authUser) return NextResponse.json(UNAUTHENTICATED_RESPONSE, { status: 401 });
     const userId = authUser.id;
-    const { id } = await params;
+    const routeParams = parseWith(listParamsSchema, await params);
+    if (routeParams.response) return routeParams.response;
+    const { id } = routeParams.data;
 
     const { rows: lists } = await query(
       `SELECT * FROM shopping_lists WHERE id = $1 AND user_id = $2`,
@@ -45,20 +49,17 @@ export async function PUT(
     const authUser = await getAuthUser(request);
     if (!authUser) return NextResponse.json(UNAUTHENTICATED_RESPONSE, { status: 401 });
     const userId = authUser.id;
-    const { id } = await params;
-    const body = await request.json();
-    const { title } = body;
+    const routeParams = parseWith(listParamsSchema, await params);
+    if (routeParams.response) return routeParams.response;
+    const { id } = routeParams.data;
+    const parsed = await parseJsonBody(request, shoppingListUpdateSchema);
+    if (parsed.response) return parsed.response;
+    const { title } = parsed.data;
 
     if (title !== undefined) {
-      if (!title.trim()) {
-        return NextResponse.json({ error: "Le titre ne peut pas être vide" }, { status: 400 });
-      }
-      if (title.trim().length > 200) {
-        return NextResponse.json({ error: "Le titre ne peut pas dépasser 200 caractères" }, { status: 400 });
-      }
       const result = await query(
         `UPDATE shopping_lists SET title = $1, updated_at = NOW() WHERE id = $2 AND user_id = $3`,
-        [title.trim(), id, userId]
+        [title, id, userId]
       );
       if (result.rowCount === 0) {
         return NextResponse.json({ error: "Liste non trouvée" }, { status: 404 });
@@ -90,7 +91,9 @@ export async function DELETE(
     const authUser = await getAuthUser(request);
     if (!authUser) return NextResponse.json(UNAUTHENTICATED_RESPONSE, { status: 401 });
     const userId = authUser.id;
-    const { id } = await params;
+    const routeParams = parseWith(listParamsSchema, await params);
+    if (routeParams.response) return routeParams.response;
+    const { id } = routeParams.data;
     const result = await query(`DELETE FROM shopping_lists WHERE id = $1 AND user_id = $2`, [id, userId]);
     if (result.rowCount === 0) {
       return NextResponse.json({ error: "Liste non trouvée" }, { status: 404 });

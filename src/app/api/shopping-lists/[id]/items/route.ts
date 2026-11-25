@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/lib/db";
 import { getAuthUser, UNAUTHENTICATED_RESPONSE } from "@/lib/auth";
+import { parseJsonBody, parseWith } from "@/lib/api-validation";
+import { listParamsSchema, shoppingItemCreateSchema } from "@/lib/schemas";
 
 export const dynamic = "force-dynamic";
 
@@ -13,17 +15,12 @@ export async function POST(
     const authUser = await getAuthUser(request);
     if (!authUser) return NextResponse.json(UNAUTHENTICATED_RESPONSE, { status: 401 });
     const userId = authUser.id;
-    const { id } = await params;
-    const body = await request.json();
-    const { name } = body;
-
-    if (!name || !name.trim()) {
-      return NextResponse.json({ error: "Nom requis" }, { status: 400 });
-    }
-
-    if (name.trim().length > 200) {
-      return NextResponse.json({ error: "Le nom ne peut pas dépasser 200 caractères" }, { status: 400 });
-    }
+    const routeParams = parseWith(listParamsSchema, await params);
+    if (routeParams.response) return routeParams.response;
+    const { id } = routeParams.data;
+    const parsed = await parseJsonBody(request, shoppingItemCreateSchema);
+    if (parsed.response) return parsed.response;
+    const { name } = parsed.data;
 
     // Verify list ownership
     const { rows: lists } = await query(
@@ -37,7 +34,7 @@ export async function POST(
     // Add item
     const { rows } = await query(
       `INSERT INTO shopping_list_items (list_id, name) VALUES ($1, $2) RETURNING *`,
-      [id, name.trim()]
+      [id, name]
     );
 
     // Update list's updated_at

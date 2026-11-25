@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
 import { getAuthUser, UNAUTHENTICATED_RESPONSE } from "@/lib/auth";
-import { validateMaxLength, validatePositiveNumber } from "@/lib/validation";
+import { parseJsonBody } from "@/lib/api-validation";
+import { profileUpdateSchema } from "@/lib/schemas";
 import { goalIssue, isNutritionGoal, validActivityProfile, calculateNutrition } from "@/lib/nutrition";
 
 export const dynamic = "force-dynamic";
@@ -29,26 +30,15 @@ export async function PUT(request: Request) {
     const authUser = await getAuthUser(request);
     if (!authUser) return NextResponse.json(UNAUTHENTICATED_RESPONSE, { status: 401 });
     const userId = authUser.id;
-    const body = await request.json();
-    let {
+    // Champs inconnus ignorés : le profil web renvoie l'objet utilisateur complet
+    const parsed = await parseJsonBody(request, profileUpdateSchema);
+    if (parsed.response) return parsed.response;
+    const body: Record<string, unknown> & typeof parsed.data = parsed.data;
+    const {
       first_name, last_name, age, weight, height,
       gender, activity_level, sport_type,
-      daily_calorie_goal, daily_protein_goal, daily_carbs_goal, daily_fat_goal,
     } = body;
-
-    // Validation
-    const errors = [
-      ...validateMaxLength(first_name, "first_name", 100),
-      ...validateMaxLength(last_name, "last_name", 100),
-      ...validatePositiveNumber(age, "age"),
-      ...validatePositiveNumber(weight, "weight"),
-      ...validatePositiveNumber(height, "height"),
-      ...validatePositiveNumber(daily_calorie_goal, "daily_calorie_goal"),
-    ];
-
-    if (errors.length > 0) {
-      return NextResponse.json({ errors }, { status: 400 });
-    }
+    let { daily_calorie_goal, daily_protein_goal, daily_carbs_goal, daily_fat_goal } = body;
 
     // Auto-calculate nutrition goals if personal info is complete
     // Always recalculate when personal info is provided (unless explicit goals are passed)

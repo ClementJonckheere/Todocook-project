@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/lib/db";
 import { getAuthUser, UNAUTHENTICATED_RESPONSE } from "@/lib/auth";
+import { parseWith } from "@/lib/api-validation";
+import { listParamsSchema } from "@/lib/schemas";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +15,9 @@ export async function POST(
     const authUser = await getAuthUser(request);
     if (!authUser) return NextResponse.json(UNAUTHENTICATED_RESPONSE, { status: 401 });
     const userId = authUser.id;
-    const { id } = await params;
+    const routeParams = parseWith(listParamsSchema, await params);
+    if (routeParams.response) return routeParams.response;
+    const { id } = routeParams.data;
 
     // Verify ownership
     const { rows: lists } = await query(

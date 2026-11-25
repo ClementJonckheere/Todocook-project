@@ -2,17 +2,19 @@ import { NextRequest, NextResponse } from "next/server";
 import { gramsPerUnit } from "@/lib/recipe-portions";
 import { query } from "@/lib/db";
 import { getAuthUser, UNAUTHENTICATED_RESPONSE } from "@/lib/auth";
+import { parseQuery } from "@/lib/api-validation";
+import { dateRangeQuerySchema } from "@/lib/schemas";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
     const authUser = await getAuthUser();
     if (!authUser) return NextResponse.json(UNAUTHENTICATED_RESPONSE, { status: 401 });
     const userId = authUser.id;
-    const startDate = searchParams.get("startDate");
-    const endDate = searchParams.get("endDate");
+    const parsed = parseQuery(request, dateRangeQuerySchema);
+    if (parsed.response) return parsed.response;
+    const { startDate, endDate } = parsed.data;
 
     if (!startDate || !endDate) {
       return NextResponse.json({ error: "startDate et endDate sont requis" }, { status: 400 });

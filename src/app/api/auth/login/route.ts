@@ -2,15 +2,17 @@ import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
 import { verifyPassword, createSession, setSessionCookie, sessionClientFrom } from "@/lib/auth";
 import { checkRateLimit, clientIp, tooManyRequests } from "@/lib/rate-limit";
+import { parseJsonBody } from "@/lib/api-validation";
+import { loginSchema } from "@/lib/schemas";
 
 const MAX_ATTEMPTS = 10;
 const WINDOW_MS = 15 * 60 * 1000;
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json().catch(() => null);
-    const email = typeof body?.email === "string" ? body.email.trim().toLowerCase() : "";
-    const password = typeof body?.password === "string" ? body.password : "";
+    const parsed = await parseJsonBody(request, loginSchema);
+    if (parsed.response) return parsed.response;
+    const { email, password } = parsed.data;
 
     // Limite par adresse IP et par compte visé, pour freiner le test de mots de passe
     for (const key of [`login:ip:${clientIp(request)}`, `login:email:${email}`]) {

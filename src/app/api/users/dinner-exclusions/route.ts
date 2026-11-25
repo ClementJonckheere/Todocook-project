@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
 import { getAuthUser, UNAUTHENTICATED_RESPONSE } from "@/lib/auth";
+import { parseJsonBody } from "@/lib/api-validation";
+import { dinnerExclusionSchema } from "@/lib/schemas";
 
 export const dynamic = "force-dynamic";
 
@@ -24,10 +26,9 @@ export async function GET(request: Request) {
 export async function PUT(request: Request) {
   const user = await getAuthUser(request);
   if (!user) return NextResponse.json(UNAUTHENTICATED_RESPONSE, { status: 401 });
-  const body = await request.json().catch(() => null);
-  if (!Number.isSafeInteger(body?.id) || body.id <= 0 || typeof body.excluded !== "boolean") {
-    return NextResponse.json({ error: "Préférence invalide." }, { status: 400 });
-  }
+  const parsed = await parseJsonBody(request, dinnerExclusionSchema);
+  if (parsed.response) return parsed.response;
+  const body = parsed.data;
   if (body.excluded) {
     const result = await query(
       `INSERT INTO dinner_exclusions(user_id, ingredient_id)
