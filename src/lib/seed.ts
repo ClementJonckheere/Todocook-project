@@ -53,7 +53,9 @@ export async function seedReferenceData(): Promise<boolean> {
     return rows[0]?.id ?? null;
   }
 
-  // Seed recipes
+  // Recettes de référence. Dans cette liste, calories / protein / carbs / fat sont donnés
+  // PAR PORTION (plus lisible) ; ils sont multipliés par servings à l'insertion, car
+  // l'application stocke les valeurs de la recette entière (voir migration 005).
   const recipes = [
     {
       name: "Poulet grillé aux légumes",
@@ -444,7 +446,11 @@ export async function seedReferenceData(): Promise<boolean> {
     const { rows: recipeRows } = await query(
       `INSERT INTO recipes (name, description, instructions, prep_time, cook_time, servings, calories, protein, carbs, fat, is_public)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, true) RETURNING id`,
-      [recipe.name, recipe.description, recipe.instructions, recipe.prepTime, recipe.cookTime, recipe.servings, recipe.calories, recipe.protein, recipe.carbs, recipe.fat]
+      [
+        recipe.name, recipe.description, recipe.instructions, recipe.prepTime, recipe.cookTime, recipe.servings,
+        recipe.calories * recipe.servings, recipe.protein * recipe.servings,
+        recipe.carbs * recipe.servings, recipe.fat * recipe.servings,
+      ]
     );
     const recipeId = recipeRows[0].id;
 
