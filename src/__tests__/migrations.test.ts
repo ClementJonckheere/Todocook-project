@@ -48,3 +48,52 @@ describeDb("migrate (Postgres)", () => {
     expect(totals.rows).toEqual([{ date: "2026-01-15", calories: 260 }]);
   });
 });
+
+describeDb("migration 005 (valeurs nutritionnelles des recettes de référence)", () => {
+  const pool = new Pool({ connectionString: url });
+  const migration005 = listMigrationFiles().find((file) => file.startsWith("005_"))!;
+  afterAll(() => pool.end());
+
+  it("convertit les recettes de référence en totaux et corrige les repas déjà consommés", async () => {
+    const fs = await import("fs");
+    const path = await import("path");
+    const { MIGRATIONS_DIR } = await import("@/lib/migrate");
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      const user = await client.query("INSERT INTO users(email, first_name, last_name) VALUES ('m5@t.fr','M','5') RETURNING id");
+      const ref = await client.query(
+        "INSERT INTO recipes(name, servings, calories, protein, carbs, fat) VALUES ('Gratin', 6, 320, 8, 35, 18) RETURNING id"
+      );
+      const solo = await client.query(
+        "INSERT INTO recipes(name, servings, calories, protein, carbs, fat) VALUES ('Toast', 1, 350, 14, 28, 22) RETURNING id"
+      );
+      const mine = await client.query(
+        "INSERT INTO recipes(name, servings, calories, protein, carbs, fat, created_by) VALUES ('Perso', 4, 1200, 40, 100, 50, $1) RETURNING id",
+        [user.rows[0].id]
+      );
+      // Repas consommé avec la valeur erronée figée : 320 / 6
+      await client.query(
+        `INSERT INTO meal_plans(user_id, recipe_id, date, consumed_portions, nutrition_per_portion)
+         VALUES ($1, $2, '2026-01-01', 1, jsonb_build_object('calories', 320.0 / 6, 'protein', 8.0 / 6, 'carbs', 35.0 / 6, 'fat', 18.0 / 6))`,
+        [user.rows[0].id, ref.rows[0].id]
+      );
+
+      await client.query(fs.readFileSync(path.join(MIGRATIONS_DIR, migration005), "utf8"));
+
+      const recipes = await client.query("SELECT name, calories, protein FROM recipes WHERE id = ANY($1) ORDER BY name", [
+        [ref.rows[0].id, solo.rows[0].id, mine.rows[0].id],
+      ]);
+      expect(recipes.rows).toEqual([
+        { name: "Gratin", calories: 1920, protein: 48 }, // 6 portions x 320 kcal
+        { name: "Perso", calories: 1200, protein: 40 }, // recette d'utilisateur : inchangée
+        { name: "Toast", calories: 350, protein: 14 }, // une seule portion : inchangée
+      ]);
+      const meal = await client.query("SELECT nutrition_per_portion->>'calories' AS kcal FROM meal_plans WHERE recipe_id = $1", [ref.rows[0].id]);
+      expect(Number(meal.rows[0].kcal)).toBeCloseTo(320);
+    } finally {
+      await client.query("ROLLBACK");
+      client.release();
+    }
+  });
+});
