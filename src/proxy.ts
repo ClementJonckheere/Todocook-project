@@ -38,9 +38,9 @@ export function proxy(request: NextRequest) {
   if (pathname === "/") {
     return NextResponse.redirect(new URL(hasSession ? "/dashboard" : "/login", request.url));
   }
-  if (pathname === "/login" && hasSession) {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
-  }
+  // Pas de redirection de /login vers /dashboard ici : la seule présence du cookie ne dit pas
+  // si la session est encore valide (elle peut avoir expiré ou été révoquée). La page de
+  // connexion vérifie elle-même la session et redirige si elle l'est.
   if (!hasSession && !matches(pathname, PUBLIC_PAGES)) {
     return NextResponse.redirect(new URL("/login", request.url));
   }

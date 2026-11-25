@@ -50,8 +50,27 @@ export async function clearSessionCookie() {
 }
 
 async function currentToken(): Promise<string | null> {
+  return (await currentTokenWithSource()).token;
+}
+
+async function currentTokenWithSource(): Promise<{ token: string | null; fromCookie: boolean }> {
   const [headerStore, cookieStore] = await Promise.all([headers(), cookies()]);
-  return readSessionToken(headerStore.get("authorization"), cookieStore.get(SESSION_COOKIE)?.value);
+  const cookie = cookieStore.get(SESSION_COOKIE)?.value;
+  const token = readSessionToken(headerStore.get("authorization"), cookie);
+  return { token, fromCookie: token !== null && token === cookie };
+}
+
+/**
+ * Efface un cookie de session qui ne correspond plus à aucune session valide (expirée,
+ * révoquée…). Sans cela, le navigateur le renverrait indéfiniment et le proxy croirait
+ * l'utilisateur connecté. Sans effet là où les cookies ne sont pas modifiables.
+ */
+async function clearStaleSessionCookie() {
+  try {
+    (await cookies()).delete(SESSION_COOKIE);
+  } catch {
+    // Contexte en lecture seule (rendu d'une page) : le cookie sera effacé au prochain appel d'API
+  }
 }
 
 /**
@@ -59,7 +78,7 @@ async function currentToken(): Promise<string | null> {
  * Le paramètre `request` est conservé pour compatibilité : la lecture passe par next/headers.
  */
 export async function getAuthUser(_request?: Request): Promise<AuthUser | null> {
-  const token = await currentToken();
+  const { token, fromCookie } = await currentTokenWithSource();
   if (!token) return null;
   const { rows } = await query<AuthUser>(
     `SELECT u.id, u.email, u.first_name, u.last_name
@@ -67,6 +86,7 @@ export async function getAuthUser(_request?: Request): Promise<AuthUser | null> 
      WHERE s.token_hash = $1 AND s.expires_at > NOW()`,
     [hashToken(token)]
   );
+  if (!rows[0] && fromCookie) await clearStaleSessionCookie();
   return rows[0] ?? null;
 }
 

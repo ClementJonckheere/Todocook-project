@@ -2,7 +2,7 @@
 
 import { GoalSelect } from "@/components/GoalSelect";
 import { GOAL_LABELS, goalIssue, type NutritionGoal } from "@/lib/nutrition";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { LogIn, UserPlus, ChefHat, Eye, EyeOff, ChevronRight, ChevronLeft, Calculator } from "lucide-react";
@@ -10,7 +10,12 @@ import { ACTIVITY_LEVELS, SPORT_TYPES, calculateNutrition, type Gender, type Act
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login, register } = useAuth();
+  const { login, register, user, loading: authLoading } = useAuth();
+
+  // Session réellement valide (vérifiée par l'API) : inutile de se reconnecter
+  useEffect(() => {
+    if (!authLoading && user) router.replace("/dashboard");
+  }, [authLoading, user, router]);
   const [isRegister, setIsRegister] = useState(false);
   const [registrationStep, setRegistrationStep] = useState(1);
   const [email, setEmail] = useState("");
