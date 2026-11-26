@@ -57,6 +57,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(data);
       } else {
         setUser(null);
+        // Session expirée ou révoquée (l'API a effacé le cookie) : retour à la connexion
+        if (res.status === 401 && window.location.pathname !== "/login") {
+          window.location.replace("/login");
+        }
       }
     } catch {
       setUser(null);

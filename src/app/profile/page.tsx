@@ -163,7 +163,8 @@ export default function ProfilePage() {
         return;
       }
       const lines = [`Import terminé : ${result.imported} recette(s) importée(s).`];
-      if (result.skipped) lines.push(`${result.skipped} recette(s) déjà présente(s), ignorée(s).`);
+      if (result.completed) lines.push(`${result.completed} recette(s) déjà présente(s) complétée(s) avec des ingrédients désormais au catalogue.`);
+      if (result.skipped) lines.push(`${result.skipped} recette(s) déjà présente(s), inchangée(s).`);
       if (result.unmatched_ingredients?.length) {
         lines.push(`Ingrédients absents du catalogue (non rattachés) : ${result.unmatched_ingredients.join(", ")}.`);
       }

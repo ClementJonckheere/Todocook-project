@@ -97,3 +97,68 @@ describeDb("migration 005 (valeurs nutritionnelles des recettes de référence)"
     }
   });
 });
+
+describeDb("migration 006 (recettes de référence recalculées depuis leurs ingrédients)", () => {
+  const pool = new Pool({ connectionString: url });
+  const migration006 = listMigrationFiles().find((file) => file.startsWith("006_"))!;
+  afterAll(() => pool.end());
+
+  it("donne exactement le même résultat que computeRecipeNutrition, toutes conversions comprises", async () => {
+    const fs = await import("fs");
+    const path = await import("path");
+    const { MIGRATIONS_DIR } = await import("@/lib/migrate");
+    const { computeRecipeNutrition } = await import("@/lib/recipe-nutrition");
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      const ing = async (name: string, unit: string, kcal: number, prot: number, carbs: number, fat: number, barcode: string | null = null) =>
+        (await client.query(
+          "INSERT INTO ingredients(name, unit, calories, protein, carbs, fat, barcode) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *",
+          [name, unit, kcal, prot, carbs, fat, barcode]
+        )).rows[0];
+      const riz = await ing("Riz test", "g", 130, 2.7, 28, 0.3);
+      const oeuf = await ing("Oeuf", "pièce", 155, 13, 1.1, 11);
+      const huile = await ing("Huile d'olive", "ml", 884, 0, 0, 100);
+      const lait = await ing("Lait", "ml", 42, 3.4, 5, 1);
+      const marque = await ing("Céréales marque", "g", 380, 8, 80, 2, "3000000000001");
+      const lines = [
+        { ingredient: riz, quantity: 0.25, unit: "kg" },
+        { ingredient: oeuf, quantity: 3, unit: "pièce" },
+        { ingredient: huile, quantity: 15, unit: "ml" },
+        { ingredient: lait, quantity: 200, unit: "ml" },
+        { ingredient: marque, quantity: 40, unit: "g" },
+      ];
+      const ref = await client.query(
+        "INSERT INTO recipes(name, servings, calories, protein, carbs, fat) VALUES ('Réf', 4, 1, 1, 1, 1) RETURNING id"
+      );
+      // Recette de référence non convertible (produit de marque en « pièce ») : doit rester intacte
+      const odd = await client.query(
+        "INSERT INTO recipes(name, servings, calories, protein, carbs, fat) VALUES ('Bizarre', 1, 999, 9, 9, 9) RETURNING id"
+      );
+      const user = await client.query("INSERT INTO users(email, first_name, last_name) VALUES ('m6@t.fr','M','6') RETURNING id");
+      const mine = await client.query(
+        "INSERT INTO recipes(name, servings, calories, protein, carbs, fat, created_by) VALUES ('Perso', 1, 777, 7, 7, 7, $1) RETURNING id",
+        [user.rows[0].id]
+      );
+      for (const line of lines) {
+        await client.query("INSERT INTO recipe_ingredients(recipe_id, ingredient_id, quantity, unit) VALUES ($1,$2,$3,$4)",
+          [ref.rows[0].id, line.ingredient.id, line.quantity, line.unit]);
+      }
+      await client.query("INSERT INTO recipe_ingredients(recipe_id, ingredient_id, quantity, unit) VALUES ($1,$2,1,'pièce')",
+        [odd.rows[0].id, marque.id]);
+      await client.query("INSERT INTO recipe_ingredients(recipe_id, ingredient_id, quantity, unit) VALUES ($1,$2,100,'g')",
+        [mine.rows[0].id, riz.id]);
+
+      await client.query(fs.readFileSync(path.join(MIGRATIONS_DIR, migration006), "utf8"));
+
+      const get = async (id: number) =>
+        (await client.query("SELECT calories, protein, carbs, fat FROM recipes WHERE id = $1", [id])).rows[0];
+      expect(await get(ref.rows[0].id)).toEqual(computeRecipeNutrition(lines));
+      expect(await get(odd.rows[0].id)).toEqual({ calories: 999, protein: 9, carbs: 9, fat: 9 });
+      expect(await get(mine.rows[0].id)).toEqual({ calories: 777, protein: 7, carbs: 7, fat: 7 });
+    } finally {
+      await client.query("ROLLBACK");
+      client.release();
+    }
+  });
+});
