@@ -14,6 +14,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { format } from "date-fns";
 import { apiUrl, getHeaders, apiRequest, logout } from "../../src/lib/api";
 import { colors } from "../../src/theme/colors";
+import { AccountSettings } from "../../src/components/AccountSettings";
 
 interface User {
   id: number;
@@ -420,6 +421,14 @@ export default function ProfileScreen() {
           <Ionicons name="add-circle" size={22} color={colors.white} />
           <Text style={s.createText}>Créer une recette</Text>
         </TouchableOpacity>
+
+        {user && (
+          <AccountSettings
+            email={user.email}
+            onEmailChanged={(email) => setUser({ ...user, email })}
+            onDeleted={() => router.replace("/login")}
+          />
+        )}
 
         {/* Logout button */}
         <TouchableOpacity style={s.logoutBtn} onPress={handleLogout}>

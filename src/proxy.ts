@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { isPublicPage } from "@/lib/public-pages";
 
 const SESSION_COOKIE = "todocook-session";
 
@@ -10,10 +11,11 @@ const PUBLIC_API_PATHS = [
   "/api/auth/login",
   "/api/auth/register",
   "/api/auth/logout",
+  "/api/auth/forgot-password",
+  "/api/auth/reset-password",
   "/api/nutrition/calculate",
 ];
 
-const PUBLIC_PAGES = ["/login"];
 
 function matches(pathname: string, paths: string[]) {
   return paths.some((path) => pathname === path || pathname.startsWith(`${path}/`));
@@ -41,7 +43,7 @@ export function proxy(request: NextRequest) {
   // Pas de redirection de /login vers /dashboard ici : la seule présence du cookie ne dit pas
   // si la session est encore valide (elle peut avoir expiré ou été révoquée). La page de
   // connexion vérifie elle-même la session et redirige si elle l'est.
-  if (!hasSession && !matches(pathname, PUBLIC_PAGES)) {
+  if (!hasSession && !isPublicPage(pathname)) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
   return NextResponse.next();

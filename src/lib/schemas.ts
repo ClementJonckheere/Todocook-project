@@ -284,3 +284,28 @@ export const shoppingItemCreateSchema = z.object({ name: requiredText(200, "Le n
 export const shoppingItemUpdateSchema = z.object({ checked: z.boolean({ error: "checked doit être un booléen" }) });
 export const listParamsSchema = z.object({ id });
 export const listItemParamsSchema = z.object({ id, itemId: id });
+
+/* ---------- Compte ---------- */
+
+const currentPassword = z.string({ error: "Mot de passe actuel requis" }).min(1, "Mot de passe actuel requis").max(200);
+
+export const changePasswordSchema = z
+  .object({ current_password: currentPassword, new_password: newPassword })
+  .refine((data) => data.current_password !== data.new_password, {
+    path: ["new_password"],
+    message: "Le nouveau mot de passe doit être différent de l'actuel",
+  });
+
+export const changeEmailSchema = z.object({ email, password: currentPassword });
+
+export const deleteAccountSchema = z.object({
+  password: currentPassword,
+  confirmation: z.literal("SUPPRIMER", { error: "Tapez SUPPRIMER pour confirmer la suppression du compte" }),
+});
+
+export const forgotPasswordSchema = z.object({ email: z.string().trim().toLowerCase().max(254).pipe(z.email("Email invalide")) });
+
+export const resetPasswordSchema = z.object({
+  token: z.string({ error: "Lien invalide" }).regex(/^[A-Za-z0-9_-]{20,200}$/, "Lien invalide ou expiré"),
+  password: newPassword,
+});

@@ -14,7 +14,7 @@ describe("proxy (contrôle d'accès des pages et de l'API)", () => {
     expect(proxy(request("/api/users")).status).toBe(401);
     expect(proxy(request("/api/users", { bearer: "x" })).status).toBe(200);
     expect(proxy(request("/api/users", { cookie: "x" })).status).toBe(200);
-    for (const path of ["/api/auth/login", "/api/auth/register", "/api/auth/logout", "/api/nutrition/calculate"]) {
+    for (const path of ["/api/auth/login", "/api/auth/register", "/api/auth/logout", "/api/auth/forgot-password", "/api/auth/reset-password", "/api/nutrition/calculate"]) {
       expect(proxy(request(path)).status).toBe(200);
     }
   });
@@ -26,5 +26,8 @@ describe("proxy (contrôle d'accès des pages et de l'API)", () => {
     expect(proxy(request("/dashboard", { cookie: "x" })).headers.get("location")).toBeNull();
     expect(proxy(request("/login", { cookie: "cookie-perime" })).headers.get("location")).toBeNull();
     expect(proxy(request("/offline.html")).headers.get("location")).toBeNull();
+    expect(proxy(request("/mot-de-passe-oublie")).headers.get("location")).toBeNull();
+    expect(proxy(request("/reinitialiser-mot-de-passe")).headers.get("location")).toBeNull();
+    expect(proxy(request("/api/account")).status).toBe(401);
   });
 });

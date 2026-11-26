@@ -1,6 +1,7 @@
 "use client";
 
 import { GoalSelect } from "@/components/GoalSelect";
+import { AccountSettings } from "@/components/AccountSettings";
 import { GOAL_LABELS, goalIssue, type NutritionGoal } from "@/lib/nutrition";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -474,6 +475,8 @@ export default function ProfilePage() {
             <input type="file" accept=".json" onChange={handleImport} className="hidden" />
           </label>
         </div>
+
+        {user && <AccountSettings email={user.email} onEmailChanged={(email) => setUser({ ...user, email })} />}
 
         <button onClick={handleLogout}
           className="w-full bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 py-3 rounded-xl font-medium flex items-center justify-center gap-2 border border-red-200 dark:border-red-800">

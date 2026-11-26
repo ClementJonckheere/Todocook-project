@@ -4,6 +4,9 @@ import { POST as login } from "@/app/api/auth/login/route";
 import { POST as logout } from "@/app/api/auth/logout/route";
 import { GET as me } from "@/app/api/auth/me/route";
 import { POST as register } from "@/app/api/auth/register/route";
+import * as account from "@/app/api/account/route";
+import * as accountEmail from "@/app/api/account/email/route";
+import * as accountPassword from "@/app/api/account/password/route";
 import * as dailyLogs from "@/app/api/daily-logs/route";
 import * as exportRoute from "@/app/api/export/route";
 import * as favorites from "@/app/api/favorites/route";
@@ -33,6 +36,7 @@ import * as users from "@/app/api/users/route";
 
 // Toutes les routes qui exigent une session, avec chacune de leurs méthodes
 const protectedRoutes: [string, Record<string, unknown>, Record<string, string>?][] = [
+  ["account", account], ["account/email", accountEmail], ["account/password", accountPassword],
   ["daily-logs", dailyLogs], ["export", exportRoute], ["favorites", favorites], ["food-journal", foodJournal],
   ["import", importRoute], ["ingredients", ingredients], ["meal-plans", mealPlans], ["pantry/missing", pantryMissing],
   ["pantry", pantry], ["ratings", ratings], ["recipes/[id]", recipeById, { id: "1" }],

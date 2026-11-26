@@ -114,6 +114,14 @@ export default function LoginScreen() {
           </TouchableOpacity>
 
           <TouchableOpacity
+            style={s.forgotLink}
+            onPress={() => Linking.openURL(apiUrl("/mot-de-passe-oublie"))}
+            activeOpacity={0.7}
+          >
+            <Text style={s.forgotLinkText}>Mot de passe oublié ?</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
             style={s.registerLink}
             onPress={() => Linking.openURL(apiUrl("/login"))}
             activeOpacity={0.7}
@@ -178,6 +186,8 @@ const s = StyleSheet.create({
   },
   loginBtnText: { color: colors.white, fontSize: 16, fontWeight: "700" },
 
+  forgotLink: { marginTop: 14, alignItems: "center" },
+  forgotLinkText: { fontSize: 13, color: colors.primary[600], fontWeight: "600" },
   registerLink: { marginTop: 20, alignItems: "center" },
   registerLinkText: { fontSize: 14, color: colors.gray[500] },
   registerLinkBold: { color: colors.primary[600], fontWeight: "700" },
