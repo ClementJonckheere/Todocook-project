@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import type React from "react";
 import {
   View,
   Text,
@@ -109,7 +110,7 @@ export default function JournalAlimentaireScreen() {
   const [message, setMessage] = useState("");
   // Clé d'idempotence : un nouvel envoi après une coupure réseau ne crée pas de doublon.
   const entryKey = useRef("");
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<React.ComponentRef<typeof ScrollView>>(null);
 
   const load = useCallback(async () => {
     setListError(false);

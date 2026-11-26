@@ -39,7 +39,7 @@ export default function TabLayout() {
         options={{
           title: "Accueil",
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? "home" : "home-outline"} size={22} color={color} />
+            <Ionicons name={focused ? "home" : "home-outline"} size={22} color={color as string} />
           ),
         }}
       />
@@ -48,7 +48,7 @@ export default function TabLayout() {
         options={{
           title: "Scanner",
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? "scan" : "scan-outline"} size={22} color={color} />
+            <Ionicons name={focused ? "scan" : "scan-outline"} size={22} color={color as string} />
           ),
         }}
       />
@@ -57,7 +57,7 @@ export default function TabLayout() {
         options={{
           title: "Planning",
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? "calendar" : "calendar-outline"} size={22} color={color} />
+            <Ionicons name={focused ? "calendar" : "calendar-outline"} size={22} color={color as string} />
           ),
         }}
       />
@@ -66,7 +66,7 @@ export default function TabLayout() {
         options={{
           title: "Garde-manger",
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? "leaf" : "leaf-outline"} size={22} color={color} />
+            <Ionicons name={focused ? "leaf" : "leaf-outline"} size={22} color={color as string} />
           ),
         }}
       />
@@ -75,7 +75,7 @@ export default function TabLayout() {
         options={{
           title: "Profil",
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? "person-circle" : "person-circle-outline"} size={24} color={color} />
+            <Ionicons name={focused ? "person-circle" : "person-circle-outline"} size={24} color={color as string} />
           ),
         }}
       />

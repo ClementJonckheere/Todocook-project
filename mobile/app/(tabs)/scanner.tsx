@@ -250,7 +250,7 @@ const s = StyleSheet.create({
   subtitle: { fontSize: 14, color: colors.gray[500], marginTop: 2 },
   cameraWrapper: { marginHorizontal: 20, marginTop: 16, borderRadius: 20, overflow: "hidden", height: 320, position: "relative" },
   camera: { flex: 1 },
-  cameraOverlay: { ...StyleSheet.absoluteFillObject, justifyContent: "center", alignItems: "center" },
+  cameraOverlay: { ...StyleSheet.absoluteFill, justifyContent: "center", alignItems: "center" },
   scanFrame: { width: 220, height: 220, borderWidth: 2, borderColor: colors.primary[400], borderRadius: 16 },
   closeCameraBtn: { position: "absolute", top: 12, right: 12, width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", alignItems: "center" },
   actionsCard: { marginHorizontal: 20, marginTop: 16, backgroundColor: colors.white, borderRadius: 20, padding: 20, shadowColor: "#000", shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 },

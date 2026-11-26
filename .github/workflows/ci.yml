@@ -56,8 +56,12 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22  # le SDK Expo 58 exige Node >= 22.13
           cache: npm
           cache-dependency-path: mobile/package-lock.json
       - run: npm ci
       - run: npm run typecheck
+      # Bundle JS Android : détecte les erreurs de configuration ou de dépendances du SDK
+      - run: npx expo export --platform android --output-dir /tmp/expo-android
+        env:
+          EXPO_PUBLIC_API_URL: https://api.example.invalid
