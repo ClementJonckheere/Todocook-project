@@ -94,6 +94,19 @@ TEST_DATABASE_URL=postgresql://todocook:todocook@localhost:5432/todocook_test np
   planning et le journal, l'import/export, le scanner (Open Food Facts simulé) et le proxy.
 - Les tests s'exécutent en série : ils partagent la même base.
 
+## Gestion du compte
+
+- **Profil (web et mobile)** : changer d'adresse e-mail ou de mot de passe (mot de passe actuel requis ;
+  les autres appareils sont déconnectés), supprimer son compte (mot de passe + saisie de « SUPPRIMER »).
+- **Suppression** : toutes les données de l'utilisateur sont effacées. Ses recettes sont supprimées, sauf
+  une recette publique utilisée par d'autres (planning, favori, note), conservée mais anonymisée.
+- **Mot de passe oublié** : `/mot-de-passe-oublie` envoie un lien valable 1 heure et utilisable une fois
+  (`/reinitialiser-mot-de-passe`) ; la réponse est la même que le compte existe ou non. Après
+  réinitialisation, toutes les sessions sont révoquées.
+- **E-mails** : envoyés via l'API Brevo (`BREVO_API_KEY`, `MAIL_FROM_EMAIL`, `MAIL_FROM_NAME`). `APP_URL`
+  est obligatoire en production : les liens ne sont jamais construits à partir de l'en-tête `Host` de la
+  requête. Sans clé, en développement, le lien est affiché dans la console du serveur.
+
 ## Validation des requêtes
 
 Chaque route API valide son corps, ses paramètres d'URL et sa query string avec [zod](https://zod.dev),

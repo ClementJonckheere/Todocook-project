@@ -3,6 +3,7 @@
 import { GoalSelect } from "@/components/GoalSelect";
 import { GOAL_LABELS, goalIssue, type NutritionGoal } from "@/lib/nutrition";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { LogIn, UserPlus, ChefHat, Eye, EyeOff, ChevronRight, ChevronLeft, Calculator } from "lucide-react";
@@ -410,6 +411,12 @@ export default function LoginPage() {
             <div className="bg-red-50 border border-red-200 rounded-lg p-3">
               <p className="text-sm text-red-600">{error}</p>
             </div>
+          )}
+
+          {!isRegister && (
+            <Link href="/mot-de-passe-oublie" className="block text-right text-xs text-primary-700 hover:underline">
+              Mot de passe oublié ?
+            </Link>
           )}
 
           {/* Action buttons */}

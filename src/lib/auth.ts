@@ -96,6 +96,18 @@ export async function revokeCurrentSession(): Promise<void> {
   if (token) await query("DELETE FROM sessions WHERE token_hash = $1", [hashToken(token)]);
 }
 
+/**
+ * Révoque toutes les sessions d'un utilisateur, sauf éventuellement la session courante
+ * (changement de mot de passe : les autres appareils doivent se reconnecter).
+ */
+export async function revokeUserSessions(userId: number, options: { keepCurrent?: boolean } = {}): Promise<void> {
+  const current = options.keepCurrent ? await currentToken() : null;
+  await query(
+    "DELETE FROM sessions WHERE user_id = $1 AND ($2::text IS NULL OR token_hash <> $2)",
+    [userId, current ? hashToken(current) : null]
+  );
+}
+
 /** Le client mobile demande à recevoir le token dans la réponse (il n'utilise pas les cookies). */
 export function sessionClientFrom(request: Request): SessionClient {
   return request.headers.get("x-client") === "mobile" ? "mobile" : "web";

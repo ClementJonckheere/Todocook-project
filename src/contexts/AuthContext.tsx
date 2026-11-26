@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
 import { apiUrl } from "@/lib/api";
+import { isPublicPage } from "@/lib/public-pages";
 
 interface User {
   id: number;
@@ -58,7 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else {
         setUser(null);
         // Session expirée ou révoquée (l'API a effacé le cookie) : retour à la connexion
-        if (res.status === 401 && window.location.pathname !== "/login") {
+        if (res.status === 401 && !isPublicPage(window.location.pathname)) {
           window.location.replace("/login");
         }
       }
