@@ -422,6 +422,11 @@ export default function ProfileScreen() {
           <Text style={s.createText}>Créer une recette</Text>
         </TouchableOpacity>
 
+        <TouchableOpacity style={s.myRecipesBtn} onPress={() => router.push("/mes-recettes")}>
+          <Ionicons name="book-outline" size={20} color={colors.gray[700]} />
+          <Text style={s.myRecipesText}>Mes recettes</Text>
+        </TouchableOpacity>
+
         {user && (
           <AccountSettings
             email={user.email}
@@ -488,6 +493,8 @@ const s = StyleSheet.create({
   sportBtn: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 8, borderWidth: 1, borderColor: colors.gray[200], backgroundColor: colors.white, marginRight: 8 },
   sportBtnActive: { backgroundColor: colors.accent[500], borderColor: colors.accent[500] },
   sportText: { fontSize: 12, fontWeight: "500", color: colors.gray[600] },
+  myRecipesBtn: { marginHorizontal: 20, marginTop: 10, backgroundColor: colors.white, borderRadius: 14, paddingVertical: 14, flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 8, borderWidth: 1, borderColor: colors.gray[200] },
+  myRecipesText: { fontSize: 15, fontWeight: "600", color: colors.gray[700] },
   logoutBtn: { marginHorizontal: 20, marginTop: 16, backgroundColor: colors.red[50], borderRadius: 14, paddingVertical: 14, flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 8, borderWidth: 1, borderColor: colors.red[200] },
   logoutText: { color: colors.red[500], fontSize: 15, fontWeight: "600" },
   recalcBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 12, marginTop: 8, backgroundColor: colors.accent[50], borderRadius: 10, borderWidth: 1, borderColor: colors.accent[200] },

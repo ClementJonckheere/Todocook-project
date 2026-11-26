@@ -71,6 +71,7 @@ describeDb("isolation des données entre utilisateurs", () => {
       expect((await asAlice(favorites.POST, { method: "POST", body: { recipe_id: secret.id } })).status).toBe(404);
       expect((await asAlice(mealPlans.POST, { method: "POST", body: { recipe_id: secret.id, date: TODAY } })).status).toBe(404);
       expect((await asAlice(recipeById.DELETE, { method: "DELETE", params: { id: secret.id } })).status).toBe(404);
+      expect((await asAlice(recipeById.PUT, { method: "PUT", params: { id: secret.id }, body: { name: "Piratée", ingredients: [] } })).status).toBe(404);
       expect((await asAlice(mlRecommendations.POST, { method: "POST", body: { recipeId: secret.id } })).status).toBe(404);
       // La recette existe toujours pour Bob
       expect((await call(recipeById.GET, "/x", { token: bob.token, params: { id: secret.id } })).status).toBe(200);

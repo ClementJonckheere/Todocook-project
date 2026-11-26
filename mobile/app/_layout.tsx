@@ -47,6 +47,7 @@ export default function RootLayout() {
           }}
         />
         <Stack.Screen name="journal-alimentaire" options={{ animation: "slide_from_right" }} />
+        <Stack.Screen name="mes-recettes" options={{ animation: "slide_from_right" }} />
         <Stack.Screen
           name="suggestions-recettes"
           options={{
