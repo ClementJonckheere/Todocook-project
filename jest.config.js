@@ -7,8 +7,11 @@ module.exports = {
   testEnvironment: "node",
   roots: ["<rootDir>/src"],
   moduleNameMapper: {
+    // Tests de routes : next/headers n'existe qu'à l'intérieur du serveur Next
+    "^next/headers$": "<rootDir>/src/__tests__/support/next-headers.ts",
     "^@/(.*)$": "<rootDir>/src/$1",
   },
+  setupFiles: ["<rootDir>/src/__tests__/support/env.ts"],
   testMatch: ["**/__tests__/**/*.test.ts"],
   transform: {
     "^.+\\.tsx?$": ["ts-jest", { tsconfig: "tsconfig.json" }],
