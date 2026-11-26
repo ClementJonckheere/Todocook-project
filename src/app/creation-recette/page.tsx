@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Search, Plus, X, Minus, Save } from "lucide-react";
 import { gramsPerUnit } from "@/lib/recipe-portions";
 import { apiUrl } from "@/lib/api";
@@ -15,6 +15,22 @@ interface Ingredient {
   fat: number;
   unit: string;
   category: string;
+  barcode?: string | null;
+}
+
+/** Ligne d'ingrédient renvoyée par GET /api/recipes/[id] */
+interface StoredIngredient {
+  ingredient_id: number;
+  quantity: number;
+  unit: string;
+  name: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  ingredient_unit: string;
+  category: string;
+  barcode: string | null;
 }
 
 interface RecipeIngredient {
@@ -24,7 +40,19 @@ interface RecipeIngredient {
 }
 
 export default function CreationRecettePage() {
+  return (
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center text-gray-400">Chargement…</div>}>
+      <RecipeEditor />
+    </Suspense>
+  );
+}
+
+/** Création d'une recette, ou modification si l'URL contient ?id= (recette de l'utilisateur). */
+function RecipeEditor() {
   const router = useRouter();
+  const editId = useSearchParams().get("id");
+  const [loadError, setLoadError] = useState("");
+  const [loaded, setLoaded] = useState(!editId);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [instructions, setInstructions] = useState("");
@@ -37,6 +65,39 @@ export default function CreationRecettePage() {
   const [showSearch, setShowSearch] = useState(false);
   const [saveError, setSaveError] = useState("");
   const [saving, setSaving] = useState(false);
+
+  // Mode modification : chargement de la recette existante
+  useEffect(() => {
+    if (!editId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(apiUrl(`/api/recipes/${encodeURIComponent(editId)}`));
+        const recipe = await res.json();
+        if (!res.ok) throw new Error(recipe.error || "Recette introuvable.");
+        if (!recipe.is_owner) throw new Error("Seule la personne qui a créé cette recette peut la modifier.");
+        if (cancelled) return;
+        setName(recipe.name ?? "");
+        setDescription(recipe.description ?? "");
+        setInstructions(recipe.instructions ?? "");
+        setPrepTime(recipe.prep_time != null ? String(recipe.prep_time) : "");
+        setCookTime(recipe.cook_time != null ? String(recipe.cook_time) : "");
+        setServings(String(recipe.servings ?? 1));
+        setRecipeIngredients((recipe.ingredients as StoredIngredient[]).map((line) => ({
+          ingredient: {
+            id: line.ingredient_id, name: line.name, calories: line.calories, protein: line.protein,
+            carbs: line.carbs, fat: line.fat, unit: line.ingredient_unit, category: line.category, barcode: line.barcode,
+          },
+          quantity: line.quantity,
+          unit: line.unit,
+        })));
+        setLoaded(true);
+      } catch (error) {
+        if (!cancelled) setLoadError(error instanceof Error ? error.message : "Recette introuvable.");
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [editId]);
 
   useEffect(() => {
     if (searchQuery.length >= 2) {
@@ -88,8 +149,8 @@ export default function CreationRecettePage() {
 
     setSaveError("");
     try {
-      const response = await fetch(apiUrl("/api/recipes"), {
-        method: "POST",
+      const response = await fetch(apiUrl(editId ? `/api/recipes/${encodeURIComponent(editId)}` : "/api/recipes"), {
+        method: editId ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name,
@@ -98,7 +159,8 @@ export default function CreationRecettePage() {
           prep_time: prepTime ? parseInt(prepTime) : null,
           cook_time: cookTime ? parseInt(cookTime) : null,
           servings: Number(servings),
-          is_public: false,
+          // En modification, la visibilité actuelle est conservée
+          ...(editId ? {} : { is_public: false }),
           ingredients: recipeIngredients.map((ri) => ({
             ingredient_id: ri.ingredient.id,
             quantity: ri.quantity,
@@ -110,7 +172,7 @@ export default function CreationRecettePage() {
         const result = await response.json();
         throw new Error(result.error || "Vérifie les quantités et les portions.");
       }
-      router.push("/profile");
+      router.push(editId ? "/mes-recettes" : "/profile");
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : "Enregistrement impossible.");
     } finally {
@@ -126,10 +188,15 @@ export default function CreationRecettePage() {
           <button onClick={() => router.back()} className="text-gray-600">
             <ArrowLeft size={22} />
           </button>
-          <h1 className="text-xl font-bold text-gray-900">Créer une recette</h1>
+          <h1 className="text-xl font-bold text-gray-900">{editId ? "Modifier la recette" : "Créer une recette"}</h1>
         </div>
       </div>
 
+      {loadError ? (
+        <p role="alert" className="mx-4 mt-6 rounded-xl bg-red-50 p-4 text-sm text-red-700">{loadError}</p>
+      ) : !loaded ? (
+        <p className="mx-4 mt-6 text-sm text-gray-500">Chargement de la recette…</p>
+      ) : (
       <div className="px-4 mt-4 space-y-4">
         {/* Basic info */}
         <div className="bg-white rounded-xl p-4 shadow-sm space-y-3">
@@ -325,7 +392,7 @@ export default function CreationRecettePage() {
           <textarea
             value={instructions}
             onChange={(e) => setInstructions(e.target.value)}
-            placeholder="1. Préchauffer le four...\n2. Couper les légumes...\n3. ..."
+            placeholder={"1. Préchauffer le four...\n2. Couper les légumes...\n3. ..."}
             rows={6}
             className="w-full border rounded-lg px-3 py-2.5 text-sm resize-none"
           />
@@ -343,9 +410,10 @@ export default function CreationRecettePage() {
           }`}
         >
           <Save size={20} />
-          {saving ? "Enregistrement..." : "Enregistrer la recette"}
+          {saving ? "Enregistrement..." : editId ? "Enregistrer les modifications" : "Enregistrer la recette"}
         </button>
       </div>
+      )}
     </div>
   );
 }

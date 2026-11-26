@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PoolClient } from "pg";
-import { computeRecipeNutrition } from "@/lib/recipe-nutrition";
+import { nutritionFromInput } from "@/lib/recipe-input";
 import { getPool, query } from "@/lib/db";
 import { getAuthUser, UNAUTHENTICATED_RESPONSE } from "@/lib/auth";
-import { parseJsonBody, validationError } from "@/lib/api-validation";
+import { parseJsonBody } from "@/lib/api-validation";
 import { recipeCreateSchema } from "@/lib/schemas";
 import { escapeLike } from "@/lib/sql";
 
@@ -88,17 +88,10 @@ export async function POST(request: Request) {
       servings, image_url, is_public, ingredients,
     } = parsed.data;
 
-    // Même calcul que pour le catalogue (src/lib/recipe-nutrition.ts)
-    const lines = [];
-    for (const ing of ingredients) {
-      const { rows } = await query("SELECT * FROM ingredients WHERE id = $1", [ing.ingredient_id]);
-      if (!rows[0]) return validationError([{ field: "ingredients", message: "Ingrédient introuvable." }], 404);
-      lines.push({ ingredient: rows[0], quantity: ing.quantity, unit: ing.unit || "g" });
-    }
-    const nutrition = computeRecipeNutrition(lines);
-    if (!nutrition) {
-      return validationError([{ field: "ingredients", message: "Ingrédient sans valeurs nutritionnelles connues, ou quantité non convertible : indique le poids en grammes." }]);
-    }
+    // Même calcul que pour le catalogue et la modification (src/lib/recipe-input.ts)
+    const computed = await nutritionFromInput(ingredients);
+    if (computed.response) return computed.response;
+    const { nutrition } = computed;
 
     client = await (await getPool()).connect();
     await client.query("BEGIN");

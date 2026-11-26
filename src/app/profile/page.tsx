@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
 import {
   User, TrendingUp, Plus, Save, ChevronDown, ChevronUp,
   Flame, Beef, Wheat, Droplet, Moon, Sun, Download, Upload, LogOut,
-  Calculator, RefreshCw,
+  Calculator, RefreshCw, BookOpen,
 } from "lucide-react";
 import { apiUrl } from "@/lib/api";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -463,6 +463,11 @@ export default function ProfilePage() {
         <button onClick={() => router.push("/creation-recette")}
           className="w-full bg-primary-500 text-white py-4 rounded-xl font-medium flex items-center justify-center gap-2 shadow-lg shadow-primary-500/20 hover:bg-primary-600 transition-colors">
           <Plus size={20} /> Créer une recette
+        </button>
+
+        <button onClick={() => router.push("/mes-recettes")}
+          className="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 py-3 rounded-xl font-medium flex items-center justify-center gap-2 text-sm">
+          <BookOpen size={16} /> Mes recettes
         </button>
 
         <div className="grid grid-cols-2 gap-3">

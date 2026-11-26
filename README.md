@@ -122,6 +122,14 @@ sont rattachés au catalogue par nom exact ; ceux qui n'y figurent pas sont list
 recette déjà possédée sous le même nom n'est pas recréée : réimporter le fichier après avoir ajouté les
 ingrédients manquants au catalogue la complète (si tous ses ingrédients actuels figurent dans le fichier).
 
+## Recettes de l'utilisateur
+
+« Mes recettes » (profil, web et mobile) liste les recettes créées ou importées : modification
+(`PUT /api/recipes/[id]`, réservée à leur créateur) et suppression. La modification remplace les
+ingrédients et recalcule les valeurs nutritionnelles ; les repas déjà consommés gardent les valeurs
+figées au moment du repas, les repas seulement prévus suivent la recette. Une recette publique utilisée
+par d'autres ne peut pas redevenir privée.
+
 ## Valeurs nutritionnelles des recettes
 
 Les calories et macros d'une recette sont celles de la recette entière, calculées à partir de ses
