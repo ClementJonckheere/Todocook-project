@@ -16,16 +16,18 @@ import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { colors } from "../../src/theme/colors";
 import { apiUrl, getHeaders, apiRequest } from "../../src/lib/api";
+import { shownValue } from "../../src/lib/food-journal";
 
 interface Product {
   id: number;
   name: string;
   brand: string;
   category: string;
-  calories: number;
-  protein: number;
-  carbs: number;
-  fat: number;
+  // null : valeur inconnue sur Open Food Facts
+  calories: number | null;
+  protein: number | null;
+  carbs: number | null;
+  fat: number | null;
   fiber: number;
   image_url: string;
   barcode: string;
@@ -39,6 +41,7 @@ export default function ScannerScreen() {
   const [scanning, setScanning] = useState(false);
   const [manualBarcode, setManualBarcode] = useState("");
   const [product, setProduct] = useState<Product | null>(null);
+  const [nutritionComplete, setNutritionComplete] = useState(true);
   const [loading, setLoading] = useState(false);
   const [added, setAdded] = useState(false);
   const scannedRef = useRef(false);
@@ -50,17 +53,15 @@ export default function ScannerScreen() {
     const url = apiUrl(`/api/scanner?barcode=${encodeURIComponent(barcode)}`);
     try {
       const res = await apiRequest(url, { headers: getHeaders() });
-      if (!res.ok) {
-        Alert.alert("Erreur", "Erreur serveur lors de la recherche du produit.");
-        setLoading(false);
-        return;
-      }
-
-      const data = await res.json();
-      if (data.error || !data.product) {
-        Alert.alert("Produit non trouvé", "Ce code-barres n'a pas été reconnu.");
-      } else {
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.product) {
         setProduct(data.product);
+        setNutritionComplete(data.nutrition_complete !== false);
+      } else if (res.status === 404) {
+        Alert.alert("Produit non trouvé", data.error || "Ce code-barres n'a pas été reconnu.");
+      } else {
+        // 400 (code-barres invalide), 503 (Open Food Facts injoignable)…
+        Alert.alert("Erreur", data.error || "Erreur serveur lors de la recherche du produit.");
       }
     } catch (err) {
       console.error("Scanner error:", err);
@@ -188,19 +189,19 @@ export default function ScannerScreen() {
 
             <View style={s.nutritionGrid}>
               <View style={s.nutritionItem}>
-                <Text style={s.nutritionValue}>{product.calories}</Text>
+                <Text style={s.nutritionValue}>{shownValue(product.calories)}</Text>
                 <Text style={s.nutritionLabel}>kcal</Text>
               </View>
               <View style={s.nutritionItem}>
-                <Text style={s.nutritionValue}>{product.protein}g</Text>
+                <Text style={s.nutritionValue}>{shownValue(product.protein, "g")}</Text>
                 <Text style={s.nutritionLabel}>Protéines</Text>
               </View>
               <View style={s.nutritionItem}>
-                <Text style={s.nutritionValue}>{product.carbs}g</Text>
+                <Text style={s.nutritionValue}>{shownValue(product.carbs, "g")}</Text>
                 <Text style={s.nutritionLabel}>Glucides</Text>
               </View>
               <View style={s.nutritionItem}>
-                <Text style={s.nutritionValue}>{product.fat}g</Text>
+                <Text style={s.nutritionValue}>{shownValue(product.fat, "g")}</Text>
                 <Text style={s.nutritionLabel}>Lipides</Text>
               </View>
             </View>
@@ -216,18 +217,25 @@ export default function ScannerScreen() {
               </Text>
             </TouchableOpacity>
 
-            <TouchableOpacity
-              style={s.journalBtn}
-              onPress={() =>
-                router.push({
-                  pathname: "/journal-alimentaire",
-                  params: { aliment: String(product.id), ...(date ? { date } : {}) },
-                })
-              }
-            >
-              <Ionicons name="nutrition-outline" size={20} color={colors.primary[600]} />
-              <Text style={s.journalBtnText}>J'en ai mangé : ajouter au journal</Text>
-            </TouchableOpacity>
+            {nutritionComplete ? (
+              <TouchableOpacity
+                style={s.journalBtn}
+                onPress={() =>
+                  router.push({
+                    pathname: "/journal-alimentaire",
+                    params: { aliment: String(product.id), ...(date ? { date } : {}) },
+                  })
+                }
+              >
+                <Ionicons name="nutrition-outline" size={20} color={colors.primary[600]} />
+                <Text style={s.journalBtnText}>J'en ai mangé : ajouter au journal</Text>
+              </TouchableOpacity>
+            ) : (
+              <Text style={s.incompleteText}>
+                Valeurs nutritionnelles incomplètes sur Open Food Facts : ce produit ne peut pas être
+                ajouté au journal. Cherchez un aliment équivalent par son nom.
+              </Text>
+            )}
           </View>
         )}
       </ScrollView>
@@ -268,5 +276,6 @@ const s = StyleSheet.create({
   addBtnDone: { backgroundColor: colors.primary[700] },
   addBtnText: { color: colors.white, fontSize: 15, fontWeight: "700" },
   journalBtn: { flexDirection: "row", alignItems: "center", gap: 8, borderWidth: 1, borderColor: colors.primary[200], borderRadius: 14, paddingVertical: 13, paddingHorizontal: 24, marginTop: 10, width: "100%", justifyContent: "center" },
+  incompleteText: { marginTop: 10, fontSize: 13, lineHeight: 18, color: colors.amber[700], backgroundColor: colors.amber[100], borderRadius: 12, padding: 12, textAlign: "center" },
   journalBtnText: { color: colors.primary[600], fontSize: 15, fontWeight: "700" },
 });

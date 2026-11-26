@@ -16,7 +16,7 @@ import { colors } from "../../src/theme/colors";
 interface PantryItem {
   id: number;
   name: string;
-  calories: number;
+  calories: number | null;
   category: string;
   quantity: number;
   unit: string;
@@ -182,7 +182,7 @@ export default function GardeMangerScreen() {
                       <View style={{ flex: 1 }}>
                         <Text style={s.itemName}>{item.name}</Text>
                         <Text style={s.itemInfo}>
-                          {item.quantity} {item.unit} · {item.calories} kcal/100g
+                          {item.quantity} {item.unit} · {item.calories ?? "?"} kcal/100g
                         </Text>
                       </View>
                       <TouchableOpacity onPress={() => removeItem(item.id)}>

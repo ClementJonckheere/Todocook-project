@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getAuthUser, UNAUTHENTICATED_RESPONSE } from "@/lib/auth";
 import { query } from "@/lib/db";
 import { parseJsonBody, parseQuery } from "@/lib/api-validation";
+import { hasNutrition } from "@/lib/open-food-facts";
 import { dateQuerySchema, foodJournalCreateSchema, foodJournalUpdateSchema, idQuerySchema } from "@/lib/schemas";
 
 export const dynamic = "force-dynamic";
@@ -39,7 +40,15 @@ export async function POST(request: Request) {
     "SELECT id FROM food_journal WHERE user_id=$1 AND entry_key=$2 AND date=$3 AND meal_type=$4 AND grams=$5 AND ingredient_id=$6", params
   );
   if (previous.rowCount) return NextResponse.json(previous.rows[0]);
-  return NextResponse.json({ error: "Aliment indisponible ou saisie déjà modifiée." }, { status: 409 });
+  const { rows: food } = await query("SELECT calories, protein, carbs, fat FROM ingredients WHERE id = $1", [body.ingredient_id]);
+  if (!food[0]) return NextResponse.json({ error: "Aliment introuvable." }, { status: 404 });
+  if (!hasNutrition(food[0])) {
+    return NextResponse.json(
+      { error: "Valeurs nutritionnelles inconnues pour ce produit : il ne peut pas être ajouté au journal." },
+      { status: 422 }
+    );
+  }
+  return NextResponse.json({ error: "Saisie déjà enregistrée avec d'autres valeurs." }, { status: 409 });
 }
 
 export async function PATCH(request: Request) {

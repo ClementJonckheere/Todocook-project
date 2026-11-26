@@ -1,10 +1,11 @@
 import { gramsPerUnit, type IngredientMeasure } from "./recipe-portions";
 
 export interface NutritionPer100g extends IngredientMeasure {
-  calories: number;
-  protein: number;
-  carbs: number;
-  fat: number;
+  // null : valeur inconnue (produit scanné incomplet sur Open Food Facts)
+  calories: number | null;
+  protein: number | null;
+  carbs: number | null;
+  fat: number | null;
 }
 
 export interface RecipeLine {
@@ -24,18 +25,21 @@ export interface RecipeNutrition {
  * Valeurs nutritionnelles de la RECETTE ENTIÈRE, calculées à partir des ingrédients
  * (valeurs pour 100 g × quantité convertie en grammes). Arrondis : kcal à l'unité,
  * macros au dixième. Seul calcul utilisé pour les recettes créées et pour le catalogue.
- * Renvoie null si une quantité ne peut pas être convertie en grammes.
+ * Renvoie null si une quantité ne peut pas être convertie en grammes ou si un ingrédient
+ * a une valeur nutritionnelle inconnue (elle ne doit pas compter pour 0).
  */
 export function computeRecipeNutrition(lines: RecipeLine[]): RecipeNutrition | null {
   const totals = { calories: 0, protein: 0, carbs: 0, fat: 0 };
   for (const line of lines) {
     const grams = gramsPerUnit(line.ingredient, line.unit || "g");
     if (!grams) return null;
+    const { calories, protein, carbs, fat } = line.ingredient;
+    if (calories === null || protein === null || carbs === null || fat === null) return null;
     const factor = (line.quantity * grams) / 100;
-    totals.calories += line.ingredient.calories * factor;
-    totals.protein += line.ingredient.protein * factor;
-    totals.carbs += line.ingredient.carbs * factor;
-    totals.fat += line.ingredient.fat * factor;
+    totals.calories += calories * factor;
+    totals.protein += protein * factor;
+    totals.carbs += carbs * factor;
+    totals.fat += fat * factor;
   }
   return {
     calories: roundHalfUp(totals.calories, 0),

@@ -1,72 +1,55 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/lib/db";
 import { getAuthUser, UNAUTHENTICATED_RESPONSE } from "@/lib/auth";
+import { parseQuery } from "@/lib/api-validation";
+import { barcodeQuerySchema } from "@/lib/schemas";
+import { hasNutrition, lookupOffProduct } from "@/lib/open-food-facts";
 
 export const dynamic = "force-dynamic";
 
+/**
+ * Recherche un produit par code-barres : catalogue local d'abord, puis Open Food Facts
+ * (le produit trouvé y est enregistré). `nutrition_complete` indique si calories, protéines,
+ * glucides et lipides sont connus ; sinon le produit ne peut pas être ajouté au journal.
+ */
 export async function GET(request: NextRequest) {
   try {
     if (!(await getAuthUser())) return NextResponse.json(UNAUTHENTICATED_RESPONSE, { status: 401 });
-    const { searchParams } = new URL(request.url);
-    const barcode = searchParams.get("barcode");
+    const parsed = parseQuery(request, barcodeQuerySchema);
+    if (parsed.response) return parsed.response;
+    const { barcode } = parsed.data;
 
-    if (!barcode) {
-      return NextResponse.json({ error: "Code-barres requis" }, { status: 400 });
-    }
-
-    if (barcode.length > 50) {
-      return NextResponse.json({ error: "Code-barres invalide" }, { status: 400 });
-    }
-
-    // First check local database
     const { rows: localRows } = await query("SELECT * FROM ingredients WHERE barcode = $1", [barcode]);
     if (localRows.length > 0) {
-      return NextResponse.json({ source: "local", product: localRows[0] });
+      return NextResponse.json({ source: "local", product: localRows[0], nutrition_complete: hasNutrition(localRows[0]) });
     }
 
-    // Then check OpenFoodFacts API
-    const response = await fetch(
-      `https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(barcode)}.json`
-    );
-    const data = await response.json();
-
-    if (data.status === 1 && data.product) {
-      const p = data.product;
-      const nutriments = p.nutriments || {};
-
-      const product = {
-        name: p.product_name_fr || p.product_name || "Produit inconnu",
-        barcode: barcode,
-        calories: nutriments["energy-kcal_100g"] || 0,
-        protein: nutriments.proteins_100g || 0,
-        carbs: nutriments.carbohydrates_100g || 0,
-        fat: nutriments.fat_100g || 0,
-        fiber: nutriments.fiber_100g || 0,
-        unit: "g",
-        image_url: p.image_url || null,
-        brand: p.brands || null,
-        category: p.categories_tags?.[0]?.replace("en:", "") || null,
-      };
-
-      // Save to local database
-      await query(
-        `INSERT INTO ingredients (name, barcode, calories, protein, carbs, fat, fiber, unit, image_url, brand, category)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-         ON CONFLICT (barcode) DO NOTHING`,
-        [product.name, product.barcode, product.calories, product.protein, product.carbs, product.fat, product.fiber, product.unit, product.image_url, product.brand, product.category]
+    const lookup = await lookupOffProduct(barcode);
+    if (lookup.status === "unavailable") {
+      console.warn(`Open Food Facts indisponible pour ${barcode} : ${lookup.reason}`);
+      return NextResponse.json(
+        { error: "Open Food Facts est injoignable pour le moment. Réessayez plus tard ou cherchez l'aliment par son nom." },
+        { status: 503 }
       );
-
-      const { rows: saved } = await query("SELECT * FROM ingredients WHERE barcode = $1", [barcode]);
-
-      return NextResponse.json({ source: "openfoodfacts", product: saved[0] });
+    }
+    if (lookup.status === "not_found") {
+      return NextResponse.json(
+        { source: "not_found", product: null, error: "Produit introuvable pour ce code-barres." },
+        { status: 404 }
+      );
     }
 
-    return NextResponse.json({ source: "not_found", product: null }, { status: 404 });
+    const p = lookup.product;
+    await query(
+      `INSERT INTO ingredients (name, barcode, calories, protein, carbs, fat, fiber, unit, image_url, brand, category)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, 'g', $8, $9, $10)
+       ON CONFLICT (barcode) DO NOTHING`,
+      [p.name, barcode, p.calories, p.protein, p.carbs, p.fat, p.fiber, p.image_url, p.brand, p.category]
+    );
+    const { rows: saved } = await query("SELECT * FROM ingredients WHERE barcode = $1", [barcode]);
+    return NextResponse.json({ source: "openfoodfacts", product: saved[0], nutrition_complete: hasNutrition(saved[0]) });
   } catch (error) {
     console.error("GET /api/scanner error:", error);
-    return NextResponse.json(
-      { error: "Erreur lors de la recherche du produit" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Erreur lors de la recherche du produit" }, { status: 500 });
   }
 }
