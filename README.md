@@ -6,7 +6,7 @@ objectifs nutritionnels personnalisés et listes de courses.
 
 - **Web / PWA** : Next.js 16 (App Router, React 19) + routes API dans `src/app/api` ; Node.js 20.9 minimum
 - **Base de données** : PostgreSQL 16 (driver `pg`, SQL écrit à la main, sans ORM)
-- **Mobile** : Expo SDK 54 / React Native dans `mobile/`, qui consomme la même API
+- **Mobile** : Expo SDK 58 / React Native 0.88 dans `mobile/` (Node.js 22.13 minimum), qui consomme la même API
 
 ## Démarrage rapide
 
