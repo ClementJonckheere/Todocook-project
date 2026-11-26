@@ -1,13 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { query } from "@/lib/db";
+import { getPool, query } from "@/lib/db";
 import { getAuthUser, UNAUTHENTICATED_RESPONSE } from "@/lib/auth";
 import { parseJsonBody } from "@/lib/api-validation";
 import { similarRecipesSchema } from "@/lib/schemas";
-import {
-  getRecommenderInstance,
-  shouldRefreshRecommender,
-  markRecommenderInitialized,
-} from "@/lib/ml-recommender";
+import { buildRecommenderForUser } from "@/lib/ml-recommender";
+import { canAccessRecipe, RECIPE_NOT_FOUND } from "@/lib/recipe-access";
 
 export const dynamic = "force-dynamic";
 
@@ -70,36 +67,8 @@ export async function GET(request: NextRequest) {
     const highProtein = searchParams.get("highProtein") === "true";
     const includeSuggestions = searchParams.get("includeSuggestions") === "true";
 
-    // Get recommender instance
-    const recommender = getRecommenderInstance();
-
-    // Initialize/refresh the recommender if needed
-    if (shouldRefreshRecommender()) {
-      // Fetch all recipes with ingredients
-      const { rows: recipeRows } = await query(
-        `SELECT r.*, ARRAY_AGG(ri.ingredient_id) as ingredient_ids
-         FROM recipes r
-         JOIN recipe_ingredients ri ON r.id = ri.recipe_id
-         WHERE r.is_public = true OR r.created_by = $1
-         GROUP BY r.id`,
-        [userId]
-      );
-
-      const recipes: Recipe[] = recipeRows.map((r: any) => ({
-        ...r,
-        ingredient_ids: r.ingredient_ids || [],
-      }));
-
-      // Fetch all ingredients
-      const { rows: ingredientRows } = await query(
-        "SELECT id, name, category FROM ingredients"
-      );
-      const ingredients: Ingredient[] = ingredientRows;
-
-      // Initialize the ML model
-      recommender.initialize(recipes, ingredients);
-      markRecommenderInitialized();
-    }
+    // Modèle construit pour cet utilisateur uniquement (recettes publiques + les siennes)
+    const recommender = await buildRecommenderForUser(await getPool(), userId);
 
     // Get user's pantry items
     const { rows: pantryItems } = await query(
@@ -285,31 +254,12 @@ export async function POST(request: NextRequest) {
     const { recipeId } = parsed.data;
     const limit = parsed.data.limit ?? 5;
 
-    const recommender = getRecommenderInstance();
-
-    // Initialize if needed
-    if (shouldRefreshRecommender()) {
-      const { rows: recipeRows } = await query(
-        `SELECT r.*, ARRAY_AGG(ri.ingredient_id) as ingredient_ids
-         FROM recipes r
-         JOIN recipe_ingredients ri ON r.id = ri.recipe_id
-         WHERE r.is_public = true OR r.created_by = $1
-         GROUP BY r.id`,
-        [userId]
-      );
-
-      const recipes: Recipe[] = recipeRows.map((r: any) => ({
-        ...r,
-        ingredient_ids: r.ingredient_ids || [],
-      }));
-
-      const { rows: ingredientRows } = await query(
-        "SELECT id, name, category FROM ingredients"
-      );
-
-      recommender.initialize(recipes, ingredientRows);
-      markRecommenderInitialized();
+    // Recette de départ invisible pour cet utilisateur : 404, sans révéler son existence
+    if (!(await canAccessRecipe(recipeId, userId))) {
+      return NextResponse.json(RECIPE_NOT_FOUND, { status: 404 });
     }
+
+    const recommender = await buildRecommenderForUser(await getPool(), userId);
 
     const similarRecipes = recommender.findSimilarRecipes(
       recipeId,

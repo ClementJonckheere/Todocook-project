@@ -514,22 +514,35 @@ export class MLRecipeRecommender {
   }
 }
 
-// Singleton instance for caching
-let recommenderInstance: MLRecipeRecommender | null = null;
-let lastInitTime = 0;
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
-
-export function getRecommenderInstance(): MLRecipeRecommender {
-  if (!recommenderInstance) {
-    recommenderInstance = new MLRecipeRecommender();
-  }
-  return recommenderInstance;
+/** Accès base minimal (le pool pg ou un client) : permet de tester le chargeur sur une vraie base. */
+export interface Queryable {
+  query: (text: string, params?: unknown[]) => Promise<{ rows: any[] }>;
 }
 
-export function shouldRefreshRecommender(): boolean {
-  return Date.now() - lastInitTime > CACHE_DURATION;
-}
-
-export function markRecommenderInitialized(): void {
-  lastInitTime = Date.now();
+/**
+ * Construit un recommandeur pour UN utilisateur, avec uniquement les recettes qu'il a le droit
+ * de voir (publiques ou créées par lui).
+ *
+ * Il n'y a volontairement plus d'instance partagée : l'ancien singleton, mis en cache 5 minutes,
+ * était initialisé avec les recettes privées du premier utilisateur à faire une requête, puis
+ * servi à tous les autres (fuite de recettes privées). Le calcul est rapide à cette échelle
+ * (quelques dizaines à centaines de recettes) ; s'il fallait un cache, il devrait être indexé
+ * par utilisateur ou ne contenir que des recettes publiques.
+ */
+export async function buildRecommenderForUser(db: Queryable, userId: number): Promise<MLRecipeRecommender> {
+  const { rows: recipeRows } = await db.query(
+    `SELECT r.*, ARRAY_AGG(ri.ingredient_id) AS ingredient_ids
+     FROM recipes r
+     JOIN recipe_ingredients ri ON r.id = ri.recipe_id
+     WHERE r.is_public = true OR r.created_by = $1
+     GROUP BY r.id`,
+    [userId]
+  );
+  const { rows: ingredientRows } = await db.query("SELECT id, name, category FROM ingredients");
+  const recommender = new MLRecipeRecommender();
+  recommender.initialize(
+    recipeRows.map((row) => ({ ...row, ingredient_ids: row.ingredient_ids || [] })),
+    ingredientRows
+  );
+  return recommender;
 }
