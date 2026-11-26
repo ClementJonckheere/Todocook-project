@@ -38,3 +38,16 @@ export function per100g(value100g: number, grams: number): number {
 export function foodLabel(food: { name: string; brand: string | null }): string {
   return food.brand ? `${food.name} · ${food.brand}` : food.name;
 }
+
+/**
+ * Calories, protéines, glucides et lipides connus ? Un produit scanné peut avoir des valeurs
+ * inconnues (null) sur Open Food Facts : il ne doit pas compter pour 0 kcal dans le journal.
+ */
+export function hasNutrition(food: { calories: number | null; protein: number | null; carbs: number | null; fat: number | null }): boolean {
+  return [food.calories, food.protein, food.carbs, food.fat].every((value) => value !== null && value !== undefined);
+}
+
+/** Valeur affichable : "?" si inconnue. */
+export function shownValue(value: number | null | undefined, unit = ""): string {
+  return value === null || value === undefined ? "?" : `${Math.round(value)}${unit}`;
+}

@@ -28,3 +28,10 @@ describe("roundHalfUp", () => {
     expect(roundHalfUp(2.44, 1)).toBe(2.4);
   });
 });
+
+describe("computeRecipeNutrition with unknown values", () => {
+  it("refuses an ingredient whose nutrition is unknown instead of counting it as 0", () => {
+    const scanned = { name: "Produit scanné", unit: "g", barcode: "3000000000001", calories: null, protein: 5, carbs: 10, fat: 1 };
+    expect(computeRecipeNutrition([{ ingredient: scanned, quantity: 100, unit: "g" }])).toBeNull();
+  });
+});

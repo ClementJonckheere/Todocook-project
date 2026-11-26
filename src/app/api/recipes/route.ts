@@ -97,7 +97,7 @@ export async function POST(request: Request) {
     }
     const nutrition = computeRecipeNutrition(lines);
     if (!nutrition) {
-      return validationError([{ field: "ingredients", message: "Ingrédient ou conversion inconnue. Indique le poids en grammes." }]);
+      return validationError([{ field: "ingredients", message: "Ingrédient sans valeurs nutritionnelles connues, ou quantité non convertible : indique le poids en grammes." }]);
     }
 
     client = await (await getPool()).connect();

@@ -193,7 +193,7 @@ export default function GardeMangerPage() {
                       <div>
                         <p className="font-medium text-sm text-gray-900">{item.name}</p>
                         <p className="text-xs text-gray-500">
-                          {item.quantity} {item.unit} &middot; {item.calories} kcal/100g
+                          {item.quantity} {item.unit} &middot; {item.calories ?? "?"} kcal/100g
                         </p>
                       </div>
                       <button

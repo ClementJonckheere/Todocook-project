@@ -25,6 +25,8 @@ import {
   type MealType,
   foodLabel,
   formatNumber,
+  hasNutrition,
+  shownValue,
   parseDecimal,
   per100g,
   validFoodAmount,
@@ -35,10 +37,11 @@ interface Food {
   id: number;
   name: string;
   brand: string | null;
-  calories: number;
-  protein: number;
-  carbs: number;
-  fat: number;
+  // null : valeur inconnue (produit scanné incomplet sur Open Food Facts)
+  calories: number | null;
+  protein: number | null;
+  carbs: number | null;
+  fat: number | null;
 }
 
 interface Entry {
@@ -189,11 +192,13 @@ export default function JournalAlimentaireScreen() {
 
   const grams = parseDecimal(amount);
   const selected = editing ?? food;
+  // Produit scanné sans valeurs nutritionnelles complètes : il compterait pour 0 kcal
+  const unknownNutrition = Boolean(food && !editing && !hasNutrition(food));
   const calories100 = editing?.calories_100g ?? food?.calories ?? 0;
   const protein100 = editing?.protein_100g ?? food?.protein ?? 0;
 
   const save = async () => {
-    if (busy || !selected || !validFoodAmount(grams)) return;
+    if (busy || !selected || unknownNutrition || !validFoodAmount(grams)) return;
     setBusy(true);
     setMessage("");
     try {
@@ -363,7 +368,11 @@ export default function JournalAlimentaireScreen() {
                   ))}
                 </View>
 
-                {validFoodAmount(grams) ? (
+                {unknownNutrition ? (
+                  <Text style={s.errorText}>
+                    Valeurs nutritionnelles inconnues pour ce produit : il ne peut pas être ajouté au journal.
+                  </Text>
+                ) : validFoodAmount(grams) ? (
                   <Text style={s.preview}>
                     {Math.round(per100g(calories100, grams))} kcal · {formatNumber(per100g(protein100, grams))} g de protéines
                   </Text>
@@ -372,8 +381,8 @@ export default function JournalAlimentaireScreen() {
                 )}
 
                 <TouchableOpacity
-                  style={[s.primaryBtn, (busy || !validFoodAmount(grams)) && s.disabled]}
-                  disabled={busy || !validFoodAmount(grams)}
+                  style={[s.primaryBtn, (busy || unknownNutrition || !validFoodAmount(grams)) && s.disabled]}
+                  disabled={busy || unknownNutrition || !validFoodAmount(grams)}
                   onPress={save}
                 >
                   {busy ? <ActivityIndicator color={colors.white} /> : (
@@ -409,7 +418,7 @@ export default function JournalAlimentaireScreen() {
                   >
                     <View style={{ flex: 1 }}>
                       <Text style={s.matchName}>{foodLabel(item)}</Text>
-                      <Text style={s.matchMeta}>{Math.round(item.calories)} kcal / 100 g</Text>
+                      <Text style={s.matchMeta}>{shownValue(item.calories)} kcal / 100 g</Text>
                     </View>
                     <Ionicons name="add-circle" size={22} color={colors.primary[400]} />
                   </TouchableOpacity>

@@ -5,15 +5,16 @@ import Link from "next/link";
 import { format } from "date-fns";
 import { apiUrl } from "@/lib/api";
 import { MEAL_LABELS, validFoodAmount, type MealType } from "@/lib/food-journal";
+import { hasNutrition } from "@/lib/open-food-facts";
 
 interface Food {
   id: number;
   name: string;
   brand: string | null;
-  calories: number;
-  protein: number;
-  carbs: number;
-  fat: number;
+  calories: number | null;
+  protein: number | null;
+  carbs: number | null;
+  fat: number | null;
 }
 
 interface Entry {
@@ -123,10 +124,12 @@ function DayEntries({ day, initialFood }: { day: string; initialFood: Food | nul
         method: editing ? "PATCH" : "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...data, grams: Number(amount), meal_type: meal }),
       });
-      if (!r.ok) throw new Error();
+      if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error);
       setMessage(editing ? "Quantité et repas mis à jour." : "Aliment enregistré.");
       clearForm(); refresh(n => n + 1);
-    } catch { setMessage("Enregistrement impossible. Vérifiez la saisie et réessayez."); }
+    } catch (error) {
+      setMessage(error instanceof Error && error.message ? error.message : "Enregistrement impossible. Vérifiez la saisie et réessayez.");
+    }
     finally { setBusy(false); }
   }
 
@@ -143,6 +146,8 @@ function DayEntries({ day, initialFood }: { day: string; initialFood: Food | nul
   }
 
   const selected = editing || food;
+  // Produit scanné sans valeurs nutritionnelles complètes : il compterait pour 0 kcal
+  const unknownNutrition = Boolean(food && !editing && !hasNutrition(food));
   const calories = editing?.calories_100g ?? food?.calories ?? 0;
   const protein = editing?.protein_100g ?? food?.protein ?? 0;
   return (
@@ -179,8 +184,9 @@ function DayEntries({ day, initialFood }: { day: string; initialFood: Food | nul
                 </select>
               </div>
             </div>
-            {validFoodAmount(Number(amount)) && <p className="text-sm">{Math.round(Number(amount) * calories / 100)} kcal · {(Number(amount) * protein / 100).toLocaleString("fr-FR", { maximumFractionDigits: 1 })} g de protéines</p>}
-            <button disabled={!validFoodAmount(Number(amount))} className="rounded-lg bg-primary-600 px-4 py-2 font-medium text-white disabled:opacity-50">{editing ? "Enregistrer la modification" : "Ajouter au journal"}</button>
+            {unknownNutrition && <p role="alert" className="text-sm text-amber-700">Valeurs nutritionnelles inconnues pour ce produit : il ne peut pas être ajouté au journal.</p>}
+            {!unknownNutrition && validFoodAmount(Number(amount)) && <p className="text-sm">{Math.round(Number(amount) * calories / 100)} kcal · {(Number(amount) * protein / 100).toLocaleString("fr-FR", { maximumFractionDigits: 1 })} g de protéines</p>}
+            <button disabled={unknownNutrition || !validFoodAmount(Number(amount))} className="rounded-lg bg-primary-600 px-4 py-2 font-medium text-white disabled:opacity-50">{editing ? "Enregistrer la modification" : "Ajouter au journal"}</button>
           </>}
         </fieldset>
       </form>

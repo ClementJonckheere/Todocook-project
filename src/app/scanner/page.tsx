@@ -10,14 +10,17 @@ interface Product {
   id: number;
   name: string;
   barcode: string;
-  calories: number;
-  protein: number;
-  carbs: number;
-  fat: number;
+  // null : valeur inconnue sur Open Food Facts
+  calories: number | null;
+  protein: number | null;
+  carbs: number | null;
+  fat: number | null;
   image_url: string | null;
   brand: string | null;
   category: string | null;
 }
+
+const shown = (value: number | null, unit = "") => (value === null ? "?" : `${Math.round(value)}${unit}`);
 
 export default function ScannerPage() {
   const [scanning, setScanning] = useState(false);
@@ -29,6 +32,7 @@ export default function ScannerPage() {
     if (journalDate(value)) setJournalDay(value);
   }, []);
   const [product, setProduct] = useState<Product | null>(null);
+  const [nutritionComplete, setNutritionComplete] = useState(true);
   const [status, setStatus] = useState<"idle" | "scanning" | "found" | "not_found" | "added" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");
   const scannerRef = useRef<HTMLDivElement>(null);
@@ -79,15 +83,20 @@ export default function ScannerPage() {
   const lookupBarcode = async (barcode: string) => {
     setStatus("scanning");
     try {
-      const res = await fetch(apiUrl(`/api/scanner?barcode=${barcode}`));
-      const data = await res.json();
+      const res = await fetch(apiUrl(`/api/scanner?barcode=${encodeURIComponent(barcode.trim())}`));
+      const data = await res.json().catch(() => ({}));
 
-      if (data.product) {
+      if (res.ok && data.product) {
         setProduct(data.product);
+        setNutritionComplete(data.nutrition_complete !== false);
         setStatus("found");
-      } else {
+      } else if (res.status === 404) {
         setStatus("not_found");
-        setErrorMsg("Produit non trouvé dans la base de données");
+        setErrorMsg(data.error || "Produit introuvable pour ce code-barres.");
+      } else {
+        // 400 (code-barres invalide), 503 (Open Food Facts injoignable)…
+        setStatus("error");
+        setErrorMsg(data.error || "Erreur lors de la recherche");
       }
     } catch {
       setStatus("error");
@@ -239,29 +248,36 @@ export default function ScannerPage() {
 
               <div className="grid grid-cols-4 gap-2 mt-4">
                 <div className="bg-orange-50 rounded-lg p-2 text-center">
-                  <p className="text-sm font-bold text-orange-600">{Math.round(product.calories)}</p>
+                  <p className="text-sm font-bold text-orange-600">{shown(product.calories)}</p>
                   <p className="text-[10px] text-orange-400">kcal</p>
                 </div>
                 <div className="bg-red-50 rounded-lg p-2 text-center">
-                  <p className="text-sm font-bold text-red-600">{Math.round(product.protein)}g</p>
+                  <p className="text-sm font-bold text-red-600">{shown(product.protein, "g")}</p>
                   <p className="text-[10px] text-red-400">Prot.</p>
                 </div>
                 <div className="bg-amber-50 rounded-lg p-2 text-center">
-                  <p className="text-sm font-bold text-amber-600">{Math.round(product.carbs)}g</p>
+                  <p className="text-sm font-bold text-amber-600">{shown(product.carbs, "g")}</p>
                   <p className="text-[10px] text-amber-400">Gluc.</p>
                 </div>
                 <div className="bg-blue-50 rounded-lg p-2 text-center">
-                  <p className="text-sm font-bold text-blue-600">{Math.round(product.fat)}g</p>
+                  <p className="text-sm font-bold text-blue-600">{shown(product.fat, "g")}</p>
                   <p className="text-[10px] text-blue-400">Lip.</p>
                 </div>
               </div>
 
               <p className="text-xs text-gray-400 mt-2 text-center">Valeurs pour 100g</p>
 
-              <Link href={`/journal-alimentaire?aliment=${product.id}&date=${journalDay}`}
-                className="mt-3 block w-full rounded-xl border border-primary-500 px-3 py-2.5 text-center font-medium text-primary-700">
-                Saisir la quantité consommée
-              </Link>
+              {nutritionComplete ? (
+                <Link href={`/journal-alimentaire?aliment=${product.id}&date=${journalDay}`}
+                  className="mt-3 block w-full rounded-xl border border-primary-500 px-3 py-2.5 text-center font-medium text-primary-700">
+                  Saisir la quantité consommée
+                </Link>
+              ) : (
+                <p role="status" className="mt-3 rounded-xl bg-amber-50 px-3 py-2.5 text-center text-sm text-amber-800">
+                  Valeurs nutritionnelles incomplètes sur Open Food Facts : ce produit ne peut pas être
+                  ajouté au journal. Cherchez un aliment équivalent par son nom.
+                </p>
+              )}
               <button
                 onClick={addToPantry}
                 className="w-full mt-4 bg-primary-500 text-white py-3 rounded-xl font-medium flex items-center justify-center gap-2"

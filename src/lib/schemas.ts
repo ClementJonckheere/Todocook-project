@@ -147,6 +147,14 @@ export const pantryAddSchema = z.object({
 
 export const idQuerySchema = z.object({ id });
 
+/** EAN-8, UPC-A (12), EAN-13 ou GTIN-14 : uniquement des chiffres. */
+export const barcodeQuerySchema = z.object({
+  barcode: z
+    .string({ error: "Code-barres requis" })
+    .trim()
+    .regex(/^\d{8,14}$/, "Code-barres invalide : 8 à 14 chiffres attendus"),
+});
+
 /* ---------- Recettes ---------- */
 
 const minutes = optionalNumber(z.number().int().min(0).max(1440, "Durée maximale : 1440 minutes"));
