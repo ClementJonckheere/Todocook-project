@@ -44,7 +44,7 @@ La connexion se fait avec un compte existant ; l'inscription passe par le site w
 | `npm run dev` / `build` / `start` | Next.js |
 | `npm run lint` | ESLint 10 (`eslint-config-next/core-web-vitals`, configuration dans `eslint.config.mjs`) |
 | `npm run typecheck` | Vérification TypeScript |
-| `npm test` | Tests Jest ; ceux des migrations ne tournent que si `TEST_DATABASE_URL` est défini (**cette base est entièrement vidée**) |
+| `npm test` | Tests Jest. Les tests d'intégration (routes API, migrations) ne tournent que si `TEST_DATABASE_URL` est défini (**cette base est entièrement vidée**) |
 | `npm run db:migrate` | Applique les migrations en attente |
 | `npm run db:seed [-- --demo]` | Données de référence (et compte de démo) |
 
@@ -79,6 +79,20 @@ Toutes les colonnes `date` sont de type `DATE`.
   et `nutrition/calculate`.
 - Connexion limitée à 10 tentatives / 15 min (par IP et par email), inscription à 5 / heure par IP.
   Ce compteur est en mémoire : avec plusieurs instances, il faudra le déplacer dans Redis ou Postgres.
+
+## Tests
+
+```bash
+TEST_DATABASE_URL=postgresql://todocook:todocook@localhost:5432/todocook_test npm test
+```
+
+- `src/__tests__/*.test.ts` : bibliothèques (nutrition, schémas, sessions…) et migrations.
+- `src/__tests__/api/*.test.ts` : routes API appelées directement avec de vraies requêtes, contre
+  Postgres (harnais : `src/__tests__/support/api-harness.ts` ; seul `next/headers` est simulé).
+  Ils couvrent l'authentification de chaque route protégée, l'isolation des données entre
+  utilisateurs (recettes privées, listes, planning, journal, export, recommandations), le
+  planning et le journal, l'import/export, le scanner (Open Food Facts simulé) et le proxy.
+- Les tests s'exécutent en série : ils partagent la même base.
 
 ## Validation des requêtes
 
